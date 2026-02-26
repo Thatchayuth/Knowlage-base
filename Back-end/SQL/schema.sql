@@ -92,6 +92,7 @@ CREATE TABLE dbo.KnowledgeItems (
     VideoUrl        NVARCHAR(1000)      NULL,       -- URL on internal file server
     SortOrder       INT                 NOT NULL DEFAULT 0,
     ViewCount       INT                 NOT NULL DEFAULT 0,
+    Highlight BIT NOT NULL DEFAULT 0, -- 1 = show in highlighted section on homepage
     IsActive        BIT                 NOT NULL DEFAULT 1,
     CreatedBy       NVARCHAR(100)       NOT NULL,
     UpdatedBy       NVARCHAR(100)       NULL,

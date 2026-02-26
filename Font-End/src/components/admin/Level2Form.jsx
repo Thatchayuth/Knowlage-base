@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react'
 import Spinner from '../ui/Spinner'
 
-export default function Level2Form({ initialData, level1Options, onSubmit, onCancel, loading, lockLevel1 = false }) {
+export default function Level2Form({ initialData, level1Options, onSubmit, onCancel, loading }) {
   const [level1Id, setLevel1Id] = useState(initialData?.level1Id || level1Options[0]?.id || '')
   const [name, setName] = useState(initialData?.name || '')
   const [icon, setIcon] = useState(initialData?.icon || 'fa-regular fa-folder-open')
@@ -33,7 +33,6 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
           className="input-field"
           value={level1Id}
           onChange={e => setLevel1Id(e.target.value)}
-          disabled={lockLevel1}
           required
         >
           <option value="">Select…</option>
@@ -89,3 +88,5 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
     </form>
   )
 }
+
+

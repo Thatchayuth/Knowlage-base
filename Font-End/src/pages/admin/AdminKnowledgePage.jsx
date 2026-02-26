@@ -26,17 +26,19 @@ export default function AdminKnowledgePage() {
       const l1s = menu.map(l1 => ({ ...l1 }))
       setLevel1List(l1s)
 
-      const flat = menu.flatMap(l1 => [
+       const flat = menu.flatMap(l1 => [
         ...(l1.directItems || []).map(ki => ({
           id: ki.id, title: ki.title, displayMode: ki.displayMode,
           level1Id: l1.id, level1Name: l1.name,
           level2Id: null, level2Name: null,
+          highlight: ki.highlight,
         })),
         ...(l1.level2 || []).flatMap(l2 =>
           (l2.items || []).map(ki => ({
             id: ki.id, title: ki.title, displayMode: ki.displayMode,
             level1Id: l1.id, level1Name: l1.name,
             level2Id: l2.id, level2Name: l2.name,
+            highlight: ki.highlight,
           }))
         ),
       ])

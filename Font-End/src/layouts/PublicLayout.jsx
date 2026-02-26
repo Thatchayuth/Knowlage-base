@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react'
+﻿import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMenu } from '../hooks/useMenu'
 import Spinner from '../components/ui/Spinner'
@@ -20,7 +20,17 @@ function MenuSkeleton() {
 }
 
 function MenuLevel1({ item, activeId }) {
-  const [expanded, setExpanded] = useState(true)
+  const hasActive = useMemo(() => {
+    if (!activeId) return false
+    if (item.directItems?.some(di => String(di.id) === String(activeId))) return true
+    return item.level2?.some(l2 => l2.items?.some(ki => String(ki.id) === String(activeId))) || false
+  }, [item, activeId])
+
+  const [expanded, setExpanded] = useState(() => hasActive)
+
+  useEffect(() => {
+    if (hasActive) setExpanded(true)
+  }, [hasActive])
   const hasL2 = item.level2?.length > 0
   const hasDirectItems = item.directItems?.length > 0
 
@@ -58,7 +68,16 @@ function MenuLevel1({ item, activeId }) {
 }
 
 function MenuLevel2({ item, activeId }) {
-  const [expanded, setExpanded] = useState(true)
+  const hasActive = useMemo(() => {
+    if (!activeId) return false
+    return item.items?.some(ki => String(ki.id) === String(activeId)) || false
+  }, [item, activeId])
+
+  const [expanded, setExpanded] = useState(() => hasActive)
+
+  useEffect(() => {
+    if (hasActive) setExpanded(true)
+  }, [hasActive])
 
   return (
     <div className="mb-0.5">
@@ -88,6 +107,12 @@ function MenuLevel2({ item, activeId }) {
 
 function MenuKnowledgeItem({ item, activeId }) {
   const isActive = String(activeId) === String(item.id)
+  const badges = []
+  console.log('Rendering MenuKnowledgeItem:', { title: item.title, displayMode: item.displayMode, pdfUrl: item.PdfUrl || item.pdfUrl, videoUrl: item.VideoUrl || item.videoUrl }) 
+  if (item.displayMode) badges.push(item.displayMode)
+  if (item.PdfUrl || item.pdfUrl) badges.push('PDF')
+  if (item.VideoUrl || item.videoUrl) badges.push('VIDEO')
+  const uniqueBadges = [...new Set(badges)]
 
   return (
     <Link
@@ -95,10 +120,17 @@ function MenuKnowledgeItem({ item, activeId }) {
       className={`nav-item ${isActive ? 'nav-item-active pl-4' : 'nav-item-hover pl-4'}`}
     >
       <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-accent-500' : 'bg-steel-600'}`} />
-      <span className="truncate text-sm leading-snug">{item.title}</span>
-      {item.displayMode === 'PDF' && (
-        <span className="ml-auto flex-shrink-0 text-[10px] font-mono text-orange-400/70">PDF</span>
-      )}
+      <span className="truncate text-sm leading-snug flex-1">{item.title}</span>
+      <span className="flex items-center gap-1 text-[10px] font-mono">
+        {uniqueBadges.map(badge => (
+          <span
+            key={badge}
+            className={badge === 'PDF' ? 'text-orange-400/80' : badge === 'VIDEO' ? 'text-purple-300' : 'text-slate-500'}
+          >
+            {badge}
+          </span>
+        ))}
+      </span>
     </Link>
   )
 }
@@ -229,3 +261,4 @@ export default function PublicLayout({ children }) {
     </div>
   )
 }
+

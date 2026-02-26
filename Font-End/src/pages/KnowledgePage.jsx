@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import PublicLayout from '../layouts/PublicLayout'
 import { fetchKnowledge } from '../api/services'
@@ -23,17 +23,18 @@ export default function KnowledgePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError]   = useState(null)
 
+  const fetchedIdRef = useRef(null)
+
   useEffect(() => {
+    if (fetchedIdRef.current === id) return
+    fetchedIdRef.current = id
     setLoading(true)
     setError(null)
     fetchKnowledge(id)
       .then(setItem)
       .catch(e => setError(e.response?.data?.error || 'Failed to load document'))
       .finally(() => setLoading(false))
-     
-  }, [id]
-  
-)
+  }, [id])
 
   const videoEmbed = item?.VideoUrl ? resolveVideoEmbed(item.VideoUrl) : null
 
@@ -83,14 +84,30 @@ export default function KnowledgePage() {
 
             {/* Header */}
             <div className="mb-8">
-              <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
-                <h1 className="font-display font-bold text-2xl lg:text-3xl text-slate-100 leading-tight flex-1">
-                  {item.Title}
-                </h1>
-                <span className={item.DisplayMode === 'PDF' ? 'badge-pdf' : 'badge-page'}>
-                  {item.DisplayMode}
-                </span>
-              </div>
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+        <h1 className="font-display font-bold text-2xl lg:text-3xl text-slate-100 leading-tight flex-1">
+          {item.Title}
+        </h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          {(() => {
+            const labels = []
+            const add = label => { if (!labels.includes(label)) labels.push(label) }
+            if (item.DisplayMode) add(item.DisplayMode)
+            if (item.PdfUrl) add('PDF')
+            if (item.VideoUrl) add('VIDEO')
+            const getClass = label => {
+              if (label === 'PDF') return 'badge-pdf'
+              if (label === 'VIDEO') return 'badge-page bg-purple-500/20 text-purple-200 border border-purple-400/40'
+              return 'badge-page'
+            }
+            return labels.map(label => (
+              <span key={label} className={getClass(label)}>
+                {label}
+              </span>
+            ))
+          })()}
+        </div>
+      </div>
               <div className="flex items-center gap-4 text-xs text-slate-500 font-mono flex-wrap">
                 <span>Views: <span className="text-slate-400">{item.ViewCount?.toLocaleString()}</span></span>
                 <span>Updated: <span className="text-slate-400">{new Date(item.UpdatedAt).toLocaleDateString('th-TH')}</span></span>

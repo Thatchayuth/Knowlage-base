@@ -61,6 +61,7 @@ export default function KnowledgeFormPage() {
           contentHtml: item.ContentHtml,
           pdfUrl: item.PdfUrl,
           videoUrl: item.VideoUrl,
+          highlight: Boolean(item.Highlight),
           sortOrder: item.SortOrder,
         })
       })

@@ -10,6 +10,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
   const [pdfUrl, setPdfUrl] = useState(initialData?.pdfUrl || '')
   const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '')
   const [sortOrder, setSortOrder] = useState(initialData?.sortOrder ?? 0)
+  const [highlight, setHighlight] = useState(initialData?.highlight || false)
 
   useEffect(() => {
     setLevel1Id(initialData?.level1Id || '')
@@ -20,6 +21,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     setPdfUrl(initialData?.pdfUrl || '')
     setVideoUrl(initialData?.videoUrl || '')
     setSortOrder(initialData?.sortOrder ?? 0)
+    setHighlight(Boolean(initialData?.highlight))
   }, [initialData])
 
   const level2Options = useMemo(() => {
@@ -46,6 +48,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       contentHtml: displayMode === 'PAGE' ? contentHtml : null,
       pdfUrl: pdfUrl.trim() || null,
       videoUrl: videoUrl.trim() || null,
+      highlight,
       sortOrder: parseInt(sortOrder, 10) || 0,
     })
   }
@@ -67,6 +70,18 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
             {level2Options.map(l2 => <option key={l2.id} value={l2.id}>{l2.name}</option>)}
           </select>
         </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 text-xs font-mono text-slate-400">
+          <input
+            type="checkbox"
+            className="form-checkbox"
+            checked={highlight}
+            onChange={e => setHighlight(e.target.checked)}
+          />
+          Highlight this item (show on homepage)
+        </label>
       </div>
 
       <div>

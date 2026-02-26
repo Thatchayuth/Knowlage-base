@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { sql, getPool } = require('../config/database');
 const logger = require('../services/logger');
@@ -35,6 +35,7 @@ async function getMenu(req, res, next) {
         // Fetch knowledge items - if Level2 is disabled, item shows directly under Level1
         const kiResult = await pool.request().query(`
             SELECT ki.Id, ki.Level1Id, ki.Level2Id, ki.Title, ki.DisplayMode, ki.SortOrder,
+                   ki.Highlight,
                    COALESCE(l2.IsEnabled, 1) AS Level2IsEnabled
             FROM dbo.KnowledgeItems ki
             LEFT JOIN dbo.Categories_Level2 l2 ON ki.Level2Id = l2.Id AND l2.DeletedAt IS NULL
@@ -55,12 +56,13 @@ async function getMenu(req, res, next) {
         const l2KiMap = {};
         for (const ki of kiResult.recordset) {
             const level2Active = ki.Level2Id && Boolean(ki.Level2IsEnabled)
+            const mappedItem = { id: ki.Id, title: ki.Title, displayMode: ki.DisplayMode, highlight: Boolean(ki.Highlight) }
             if (level2Active) {
                 if (!l2KiMap[ki.Level2Id]) l2KiMap[ki.Level2Id] = [];
-                l2KiMap[ki.Level2Id].push({ id: ki.Id, title: ki.Title, displayMode: ki.DisplayMode });
+                l2KiMap[ki.Level2Id].push(mappedItem);
             } else {
                 if (!l1KiMap[ki.Level1Id]) l1KiMap[ki.Level1Id] = [];
-                l1KiMap[ki.Level1Id].push({ id: ki.Id, title: ki.Title, displayMode: ki.DisplayMode });
+                l1KiMap[ki.Level1Id].push(mappedItem);
             }
         }
 
@@ -81,7 +83,7 @@ async function getMenu(req, res, next) {
                 icon:      l1.Icon,
                 sortOrder: l1.SortOrder,
                 level2,
-                directItems: l1KiMap[l1.Id] || [],  // items from disabled-L2 categories
+                directItems: l1KiMap[l1.Id] || [],
             };
         });
 
@@ -106,7 +108,7 @@ async function getKnowledgeById(req, res, next) {
         const result = await pool.request()
             .input('Id', sql.Int, id)
             .query(`
-                SELECT ki.Id, ki.Title, ki.DisplayMode, ki.ContentHtml, ki.PdfUrl, ki.VideoUrl,
+                SELECT ki.Id, ki.Title, ki.DisplayMode, ki.ContentHtml, ki.PdfUrl, ki.VideoUrl, ki.Highlight,
                        ki.Level1Id, l1.Name AS Level1Name,
                        ki.Level2Id, l2.Name AS Level2Name,
                        ki.ViewCount, ki.CreatedAt, ki.UpdatedAt
@@ -153,10 +155,51 @@ async function getKnowledgeById(req, res, next) {
             message:         `Viewed knowledge item ${id}: ${item.Title}`,
         });
 
+        item.Highlight = Boolean(item.Highlight);
         return res.json({ data: item });
     } catch (err) {
         next(err);
     }
 }
 
-module.exports = { getMenu, getKnowledgeById };
+async function getFeaturedKnowledge(req, res, next) {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT TOP 50 ki.Id, ki.Title, ki.Highlight, ki.ViewCount, ki.UpdatedAt,
+                   ki.Level1Id, l1.Name AS Level1Name,
+                   ki.Level2Id, l2.Name AS Level2Name
+            FROM dbo.KnowledgeItems ki
+            INNER JOIN dbo.Categories_Level1 l1 ON ki.Level1Id = l1.Id
+            LEFT JOIN dbo.Categories_Level2 l2 ON ki.Level2Id = l2.Id
+            WHERE ki.IsActive = 1 AND ki.DeletedAt IS NULL
+            ORDER BY ki.Highlight DESC, ki.ViewCount DESC, ki.UpdatedAt DESC
+        `);
+
+        const items = [];
+        const seen = new Set();
+        for (const row of result.recordset) {
+            if (seen.has(row.Id)) continue;
+            seen.add(row.Id);
+            items.push({
+                id: row.Id,
+                title: row.Title,
+                highlight: Boolean(row.Highlight),
+                viewCount: row.ViewCount,
+                updatedAt: row.UpdatedAt,
+                level1Id: row.Level1Id,
+                level1Name: row.Level1Name,
+                level2Id: row.Level2Id,
+                level2Name: row.Level2Name,
+            });
+            if (items.length >= 10) break;
+        }
+
+        return res.json({ data: items });
+    } catch (err) {
+        next(err);
+    }
+}
+
+module.exports = { getMenu, getKnowledgeById, getFeaturedKnowledge };
+

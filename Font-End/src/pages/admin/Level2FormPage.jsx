@@ -76,7 +76,6 @@ export default function Level2FormPage() {
             onSubmit={handleSubmit}
             onCancel={() => navigate('/administrator/level2')}
             loading={saving}
-            lockLevel1={isEdit}
           />
         )}
       </div>

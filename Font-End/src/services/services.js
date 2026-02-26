@@ -7,6 +7,9 @@ export const fetchMenu = () =>
 export const fetchKnowledge = id =>
   api.get(`/api/knowledge/${id}`).then(r => r.data.data)
 
+export const fetchFeaturedKnowledge = () =>
+  api.get('/api/featured').then(r => r.data.data)
+
 export const searchKnowledge = (q, page = 1, limit = 20) =>
   api.get('/api/search', { params: { q, page, limit } }).then(r => r.data.data)
 
