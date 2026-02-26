@@ -28,7 +28,7 @@ export default function Level2FormPage() {
           for (const l1 of normalized) {
             const found = (l1.level2 || []).find(l2 => String(l2.id) === id)
             if (found) {
-              setInitial({ id: found.id, name: found.name, level1Id: l1.id, sortOrder: found.sortOrder })
+              setInitial({ id: found.id, name: found.name, icon: found.icon, level1Id: l1.id, sortOrder: found.sortOrder })
               break
             }
           }

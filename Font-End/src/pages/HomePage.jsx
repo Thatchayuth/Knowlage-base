@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import PublicLayout from '../layouts/PublicLayout'
 import { useMenu } from '../hooks/useMenu'
-import { Link } from 'react-router-dom'
+import IconRenderer from '../components/ui/IconRenderer'
 
 export default function HomePage() {
   const { menu, loading } = useMenu()
@@ -113,9 +113,7 @@ function CategoryCard({ item }) {
     <div className="panel p-5 hover:border-steel-600/80 transition-colors group">
       <div className="flex items-start justify-between mb-3">
         <div className="w-8 h-8 rounded-lg bg-accent-500/10 border border-accent-500/25 flex items-center justify-center flex-shrink-0">
-          <svg className="w-4 h-4 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-          </svg>
+          <IconRenderer icon={item.icon} className="w-4 h-4 text-accent-500" />
         </div>
         <span className="text-xs font-mono text-slate-500 tabular-nums">
           {allItems.length} docs

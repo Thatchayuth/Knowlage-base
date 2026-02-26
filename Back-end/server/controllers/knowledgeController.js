@@ -18,7 +18,7 @@ async function getMenu(req, res, next) {
 
         // Fetch all active Level1 categories
         const l1Result = await pool.request().query(`
-            SELECT Id, Name, SortOrder
+            SELECT Id, Name, SortOrder, Icon
             FROM dbo.Categories_Level1
             WHERE IsActive = 1 AND DeletedAt IS NULL
             ORDER BY SortOrder, Name
@@ -26,7 +26,7 @@ async function getMenu(req, res, next) {
 
         // Fetch all active Level2 categories with IsEnabled flag
         const l2Result = await pool.request().query(`
-            SELECT Id, Level1Id, Name, IsEnabled, SortOrder
+            SELECT Id, Level1Id, Name, Icon, IsEnabled, SortOrder
             FROM dbo.Categories_Level2
             WHERE IsActive = 1 AND DeletedAt IS NULL
             ORDER BY Level1Id, SortOrder, Name
@@ -70,6 +70,7 @@ async function getMenu(req, res, next) {
                 .map(l2 => ({
                     id:        l2.Id,
                     name:      l2.Name,
+                    icon:      l2.Icon,
                     sortOrder: l2.SortOrder,
                     items:     l2KiMap[l2.Id] || [],
                 }));
@@ -77,6 +78,7 @@ async function getMenu(req, res, next) {
             return {
                 id:        l1.Id,
                 name:      l1.Name,
+                icon:      l1.Icon,
                 sortOrder: l1.SortOrder,
                 level2,
                 directItems: l1KiMap[l1.Id] || [],  // items from disabled-L2 categories

@@ -20,6 +20,7 @@ export default function AdminLevel1Page() {
       setItems(menu.map(l1 => ({
         id:        l1.id,
         name:      l1.name,
+        icon:      l1.icon,
         sortOrder: l1.sortOrder,
         l2Count:   l1.level2?.length || 0,
         docCount:  (l1.directItems?.length || 0) + (l1.level2?.reduce((a,l) => a+(l.items?.length||0),0)||0),

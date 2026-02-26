@@ -27,6 +27,7 @@ CREATE TABLE dbo.Categories_Level1 (
     Name        NVARCHAR(200)       NOT NULL,
     SortOrder   INT                 NOT NULL DEFAULT 0,
     IsActive    BIT                 NOT NULL DEFAULT 1,
+    Icon        NVARCHAR(100)       NULL,
     CreatedBy   NVARCHAR(100)       NOT NULL,
     UpdatedBy   NVARCHAR(100)       NULL,
     CreatedAt   DATETIME2(3)        NOT NULL DEFAULT SYSDATETIME(),
@@ -52,6 +53,7 @@ CREATE TABLE dbo.Categories_Level2 (
     Id          INT IDENTITY(1,1)   NOT NULL,
     Level1Id    INT                 NOT NULL,
     Name        NVARCHAR(200)       NOT NULL,
+    Icon        NVARCHAR(100)       NULL,
     IsEnabled   BIT                 NOT NULL DEFAULT 1,   -- enable/disable toggle
     SortOrder   INT                 NOT NULL DEFAULT 0,
     IsActive    BIT                 NOT NULL DEFAULT 1,

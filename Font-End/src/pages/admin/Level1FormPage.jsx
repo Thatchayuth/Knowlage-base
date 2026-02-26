@@ -24,7 +24,7 @@ export default function Level1FormPage() {
       .then(menu => {
         if (!mounted) return
         const found = menu.find(l1 => String(l1.id) === id)
-        setInitial(found ? { id: found.id, name: found.name, sortOrder: found.sortOrder } : null)
+        setInitial(found ? { id: found.id, name: found.name, sortOrder: found.sortOrder, icon: found.icon } : null)
       })
       .catch(() => {
         if (mounted) toast({ message: 'Failed to load category', type: 'error' })

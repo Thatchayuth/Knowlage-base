@@ -4,11 +4,13 @@ import Spinner from '../ui/Spinner'
 export default function Level2Form({ initialData, level1Options, onSubmit, onCancel, loading, lockLevel1 = false }) {
   const [level1Id, setLevel1Id] = useState(initialData?.level1Id || level1Options[0]?.id || '')
   const [name, setName] = useState(initialData?.name || '')
+  const [icon, setIcon] = useState(initialData?.icon || 'fa-regular fa-folder-open')
   const [sortOrder, setSortOrder] = useState(initialData?.sortOrder ?? 0)
 
   useEffect(() => {
     setLevel1Id(initialData?.level1Id || level1Options[0]?.id || '')
     setName(initialData?.name || '')
+    setIcon(initialData?.icon || 'fa-regular fa-folder-open')
     setSortOrder(initialData?.sortOrder ?? 0)
   }, [initialData, level1Options])
 
@@ -18,6 +20,7 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
     onSubmit({
       level1Id: parseInt(level1Id, 10),
       name: name.trim(),
+      icon: icon.trim() || 'fa-regular fa-folder-open',
       sortOrder: parseInt(sortOrder, 10) || 0,
     })
   }
@@ -54,6 +57,18 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
       </div>
 
       <div>
+        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Font Awesome Icon *</label>
+        <input
+          type="text"
+          className="input-field font-mono text-xs"
+          value={icon}
+          onChange={e => setIcon(e.target.value)}
+          placeholder="fa-solid fa-globe"
+          required
+        />
+      </div>
+
+      <div>
         <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
         <input
           type="number"
@@ -66,7 +81,7 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
 
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" className="btn-secondary" onClick={onCancel} disabled={loading}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={loading || !name.trim() || !level1Id}>
+        <button type="submit" className="btn-primary" disabled={loading || !name.trim() || !level1Id || !icon.trim()}>
           {loading ? <Spinner size="sm" /> : null}
           Save
         </button>

@@ -14,6 +14,7 @@ router.use(authorizeGroup('admin-dt'));
 // ============================================================
 const level1Validation = [
     body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 200 }),
+    body('icon').trim().notEmpty().withMessage('Icon class is required').isLength({ max: 100 }),
     body('sortOrder').optional().isInt({ min: 0 }).toInt(),
 ];
 
@@ -30,6 +31,7 @@ router.delete('/level1/:id', param('id').isInt({ min: 1 }).toInt(), admin.delete
 const level2Validation = [
     body('level1Id').if((v, { req }) => req.method === 'POST').isInt({ min: 1 }).toInt(),
     body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 200 }),
+    body('icon').trim().notEmpty().withMessage('Icon class is required').isLength({ max: 100 }),
     body('isEnabled').optional().isBoolean(),
     body('sortOrder').optional().isInt({ min: 0 }).toInt(),
 ];

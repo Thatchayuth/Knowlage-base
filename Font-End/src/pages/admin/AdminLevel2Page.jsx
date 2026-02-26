@@ -35,6 +35,7 @@ export default function AdminLevel2Page() {
         (l1.level2 || []).map(l2 => ({
           id:        l2.id,
           name:      l2.name,
+          icon:      l2.icon,
           level1Id:  l1.id,
           level1Name: l1.name,
           isEnabled: l2.isEnabled,

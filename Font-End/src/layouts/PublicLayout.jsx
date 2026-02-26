@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMenu } from '../hooks/useMenu'
 import Spinner from '../components/ui/Spinner'
+import IconRenderer from '../components/ui/IconRenderer'
 
 function MenuSkeleton() {
   return (
@@ -30,9 +31,7 @@ function MenuLevel1({ item, activeId }) {
         className="w-full flex items-center justify-between px-3 py-2 text-sm font-display font-semibold text-slate-200 hover:text-accent-400 transition-colors group"
       >
         <span className="flex items-center gap-2">
-          <svg className="w-3.5 h-3.5 text-accent-500/70 group-hover:text-accent-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-          </svg>
+          <IconRenderer icon={item.icon} className="w-4 h-4 text-accent-500/80 group-hover:text-accent-400 transition-colors" />
           {item.name}
         </span>
         <svg
@@ -67,12 +66,13 @@ function MenuLevel2({ item, activeId }) {
         onClick={() => setExpanded(p => !p)}
         className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-slate-100 transition-colors"
       >
+        <IconRenderer icon={item.icon} className="w-3.5 h-3.5 text-slate-500" />
+        <span className="font-medium">{item.name}</span>
+        <span className="ml-auto text-xs text-slate-500 tabular-nums">{item.items?.length || 0}</span>
         <svg className={`w-3 h-3 text-slate-500 transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
           fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        <span className="font-medium">{item.name}</span>
-        <span className="ml-auto text-xs text-slate-500 tabular-nums">{item.items?.length || 0}</span>
       </button>
 
       {expanded && item.items?.length > 0 && (

@@ -5,6 +5,8 @@ const logger = require('../services/logger');
 const { validatePdfDomain } = require('../middlewares/pdfValidator');
 const { validationResult } = require('express-validator');
 
+const DEFAULT_ICON = 'fa-regular fa-folder-open';
+
 function _getIp(req) {
     return req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
 }
@@ -29,24 +31,30 @@ function _logAdminAction(actionType, req, opts = {}) {
     });
 }
 
+function _normalizeIcon(icon) {
+    if (!icon || !icon.trim()) return DEFAULT_ICON;
+    return icon.trim().slice(0, 100);
+}
+
 // ============================================================
 // LEVEL 1
 // ============================================================
 async function createLevel1(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
-    const { name, sortOrder } = req.body;
+    const { name, sortOrder, icon } = req.body;
 
     try {
         const pool = await getPool();
         const result = await pool.request()
             .input('Name',       sql.NVarChar(200), name.trim())
             .input('SortOrder',  sql.Int, sortOrder ?? 0)
+            .input('Icon',       sql.NVarChar(100), _normalizeIcon(icon))
             .input('CreatedBy',  sql.NVarChar(100), req.user.username)
             .query(`
-                INSERT INTO dbo.Categories_Level1 (Name, SortOrder, CreatedBy)
-                OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.SortOrder, INSERTED.CreatedAt
-                VALUES (@Name, @SortOrder, @CreatedBy)
+                INSERT INTO dbo.Categories_Level1 (Name, SortOrder, Icon, CreatedBy)
+                OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.Icon, INSERTED.SortOrder, INSERTED.CreatedAt
+                VALUES (@Name, @SortOrder, @Icon, @CreatedBy)
             `);
 
         const row = result.recordset[0];
@@ -68,7 +76,7 @@ async function updateLevel1(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
     const id = parseInt(req.params.id, 10);
-    const { name, sortOrder } = req.body;
+    const { name, sortOrder, icon } = req.body;
 
     try {
         const pool = await getPool();
@@ -76,11 +84,13 @@ async function updateLevel1(req, res, next) {
             .input('Id',         sql.Int, id)
             .input('Name',       sql.NVarChar(200), name.trim())
             .input('SortOrder',  sql.Int, sortOrder ?? 0)
+            .input('Icon',       sql.NVarChar(100), _normalizeIcon(icon))
             .input('UpdatedBy',  sql.NVarChar(100), req.user.username)
             .query(`
                 UPDATE dbo.Categories_Level1
-                SET Name = @Name, SortOrder = @SortOrder, UpdatedBy = @UpdatedBy, UpdatedAt = SYSDATETIME()
-                OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.SortOrder, INSERTED.UpdatedAt
+                SET Name = @Name, SortOrder = @SortOrder, Icon = @Icon,
+                    UpdatedBy = @UpdatedBy, UpdatedAt = SYSDATETIME()
+                OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.Icon, INSERTED.SortOrder, INSERTED.UpdatedAt
                 WHERE Id = @Id AND DeletedAt IS NULL
             `);
 
@@ -133,7 +143,7 @@ async function deleteLevel1(req, res, next) {
 async function createLevel2(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
-    const { level1Id, name, sortOrder, isEnabled } = req.body;
+    const { level1Id, name, sortOrder, isEnabled, icon } = req.body;
 
     try {
         const pool = await getPool();
@@ -141,12 +151,13 @@ async function createLevel2(req, res, next) {
             .input('Level1Id',   sql.Int, level1Id)
             .input('Name',       sql.NVarChar(200), name.trim())
             .input('IsEnabled',  sql.Bit, isEnabled !== false ? 1 : 0)
+            .input('Icon',       sql.NVarChar(100), _normalizeIcon(icon))
             .input('SortOrder',  sql.Int, sortOrder ?? 0)
             .input('CreatedBy',  sql.NVarChar(100), req.user.username)
             .query(`
-                INSERT INTO dbo.Categories_Level2 (Level1Id, Name, IsEnabled, SortOrder, CreatedBy)
-                OUTPUT INSERTED.Id, INSERTED.Level1Id, INSERTED.Name, INSERTED.IsEnabled, INSERTED.SortOrder, INSERTED.CreatedAt
-                VALUES (@Level1Id, @Name, @IsEnabled, @SortOrder, @CreatedBy)
+                INSERT INTO dbo.Categories_Level2 (Level1Id, Name, Icon, IsEnabled, SortOrder, CreatedBy)
+                OUTPUT INSERTED.Id, INSERTED.Level1Id, INSERTED.Name, INSERTED.Icon, INSERTED.IsEnabled, INSERTED.SortOrder, INSERTED.CreatedAt
+                VALUES (@Level1Id, @Name, @Icon, @IsEnabled, @SortOrder, @CreatedBy)
             `);
 
         const row = result.recordset[0];
@@ -166,7 +177,7 @@ async function updateLevel2(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
     const id = parseInt(req.params.id, 10);
-    const { name, sortOrder } = req.body;
+    const { name, sortOrder, icon } = req.body;
 
     try {
         const pool = await getPool();
@@ -174,11 +185,13 @@ async function updateLevel2(req, res, next) {
             .input('Id',         sql.Int, id)
             .input('Name',       sql.NVarChar(200), name.trim())
             .input('SortOrder',  sql.Int, sortOrder ?? 0)
+            .input('Icon',       sql.NVarChar(100), _normalizeIcon(icon))
             .input('UpdatedBy',  sql.NVarChar(100), req.user.username)
             .query(`
                 UPDATE dbo.Categories_Level2
-                SET Name = @Name, SortOrder = @SortOrder, UpdatedBy = @UpdatedBy, UpdatedAt = SYSDATETIME()
-                OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.SortOrder, INSERTED.IsEnabled, INSERTED.UpdatedAt
+                SET Name = @Name, SortOrder = @SortOrder, Icon = @Icon,
+                    UpdatedBy = @UpdatedBy, UpdatedAt = SYSDATETIME()
+                OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.Icon, INSERTED.SortOrder, INSERTED.IsEnabled, INSERTED.UpdatedAt
                 WHERE Id = @Id AND DeletedAt IS NULL
             `);
 
