@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+﻿import { useState, useCallback } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMenu } from '../hooks/useMenu'
 import Spinner from '../components/ui/Spinner'
@@ -148,7 +148,7 @@ export default function PublicLayout({ children }) {
               </div>
               <div>
                 <div className="font-display font-bold text-slate-100 text-sm leading-tight group-hover:text-accent-400 transition-colors">
-                  Knowledge Base
+                  I-FAQ Knowledge Base
                 </div>
                 <div className="text-xs text-slate-500 font-mono">Internal Portal</div>
               </div>

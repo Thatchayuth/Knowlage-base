@@ -4,6 +4,19 @@ import PublicLayout from '../layouts/PublicLayout'
 import { fetchKnowledge } from '../api/services'
 import Spinner from '../components/ui/Spinner'
 
+function resolveVideoEmbed(url) {
+  if (!url) return null
+  const trimmed = url.trim()
+  const youtubeMatch = trimmed.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/)
+  if (youtubeMatch) {
+    return { type: 'iframe', src: `https://www.youtube.com/embed/${youtubeMatch[1]}` }
+  }
+  if (/\.(mp4|webm|ogg)(\?|$)/i.test(trimmed)) {
+    return { type: 'video', src: trimmed }
+  }
+  return { type: 'iframe', src: trimmed }
+}
+
 export default function KnowledgePage() {
   const { id } = useParams()
   const [item, setItem]     = useState(null)
@@ -21,6 +34,8 @@ export default function KnowledgePage() {
   }, [id]
   
 )
+
+  const videoEmbed = item?.VideoUrl ? resolveVideoEmbed(item.VideoUrl) : null
 
   return (
     <PublicLayout>
@@ -150,6 +165,36 @@ export default function KnowledgePage() {
                   </div>
                 )}
               </>
+            )}
+
+            {/* Video block */}
+            {videoEmbed && (
+              <div className="panel p-5 mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-xs font-mono text-slate-500 uppercase tracking-[0.25em]">Video</p>
+                    <h3 className="text-sm font-semibold text-slate-200">Related clip</h3>
+                  </div>
+                  <a href={item.VideoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-accent-300 hover:text-accent-200">Open original</a>
+                </div>
+                {videoEmbed.type === 'iframe' ? (
+                  <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                    <iframe
+                      src={videoEmbed.src}
+                      title="Knowledge video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full rounded-xl border border-steel-700/60"
+                    />
+                  </div>
+                ) : (
+                  <video
+                    controls
+                    src={videoEmbed.src}
+                    className="w-full rounded-xl border border-steel-700/60"
+                  />
+                )}
+              </div>
             )}
 
             {/* PDF-only mode but no URL */}

@@ -51,6 +51,7 @@ const knowledgeValidation = [
     body('displayMode').isIn(['PDF', 'PAGE']).withMessage('displayMode must be PDF or PAGE'),
     body('contentHtml').optional({ nullable: true }).isString(),
     body('pdfUrl').optional({ nullable: true }).isURL({ require_tld: false }).isLength({ max: 1000 }),
+    body('videoUrl').optional({ nullable: true }).isURL({ require_tld: false }).isLength({ max: 1000 }),
     body('sortOrder').optional().isInt({ min: 0 }).toInt(),
 ];
 

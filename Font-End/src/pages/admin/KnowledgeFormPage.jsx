@@ -60,6 +60,7 @@ export default function KnowledgeFormPage() {
           displayMode: item.DisplayMode,
           contentHtml: item.ContentHtml,
           pdfUrl: item.PdfUrl,
+          videoUrl: item.VideoUrl,
           sortOrder: item.SortOrder,
         })
       })

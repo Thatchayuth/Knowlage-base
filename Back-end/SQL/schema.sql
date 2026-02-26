@@ -89,6 +89,7 @@ CREATE TABLE dbo.KnowledgeItems (
                     CONSTRAINT CHK_KnowledgeItems_DisplayMode CHECK (DisplayMode IN ('PDF','PAGE')),
     ContentHtml     NVARCHAR(MAX)       NULL,       -- used when DisplayMode = 'PAGE'
     PdfUrl          NVARCHAR(1000)      NULL,       -- URL on internal file server
+    VideoUrl        NVARCHAR(1000)      NULL,       -- URL on internal file server
     SortOrder       INT                 NOT NULL DEFAULT 0,
     ViewCount       INT                 NOT NULL DEFAULT 0,
     IsActive        BIT                 NOT NULL DEFAULT 1,

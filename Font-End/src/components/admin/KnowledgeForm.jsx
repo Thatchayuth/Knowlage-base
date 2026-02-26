@@ -8,6 +8,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
   const [displayMode, setDisplayMode] = useState(initialData?.displayMode || 'PAGE')
   const [contentHtml, setContentHtml] = useState(initialData?.contentHtml || '')
   const [pdfUrl, setPdfUrl] = useState(initialData?.pdfUrl || '')
+  const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '')
   const [sortOrder, setSortOrder] = useState(initialData?.sortOrder ?? 0)
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     setDisplayMode(initialData?.displayMode || 'PAGE')
     setContentHtml(initialData?.contentHtml || '')
     setPdfUrl(initialData?.pdfUrl || '')
+    setVideoUrl(initialData?.videoUrl || '')
     setSortOrder(initialData?.sortOrder ?? 0)
   }, [initialData])
 
@@ -43,6 +45,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       displayMode,
       contentHtml: displayMode === 'PAGE' ? contentHtml : null,
       pdfUrl: pdfUrl.trim() || null,
+      videoUrl: videoUrl.trim() || null,
       sortOrder: parseInt(sortOrder, 10) || 0,
     })
   }
@@ -114,6 +117,18 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
           required={displayMode === 'PDF'}
         />
         <p className="text-xs text-slate-600 mt-1">Must be on an approved internal domain.</p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Video URL (optional)</label>
+        <input
+          type="url"
+          className="input-field font-mono text-sm"
+          value={videoUrl}
+          onChange={e => setVideoUrl(e.target.value)}
+          placeholder="https://youtube.com/embed/... or https://media.local/video.mp4"
+        />
+        <p className="text-xs text-slate-600 mt-1">Supports direct MP4 links or embeddable URLs (YouTube, etc.).</p>
       </div>
 
       {displayMode === 'PAGE' && (

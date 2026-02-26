@@ -106,7 +106,7 @@ async function getKnowledgeById(req, res, next) {
         const result = await pool.request()
             .input('Id', sql.Int, id)
             .query(`
-                SELECT ki.Id, ki.Title, ki.DisplayMode, ki.ContentHtml, ki.PdfUrl,
+                SELECT ki.Id, ki.Title, ki.DisplayMode, ki.ContentHtml, ki.PdfUrl, ki.VideoUrl,
                        ki.Level1Id, l1.Name AS Level1Name,
                        ki.Level2Id, l2.Name AS Level2Name,
                        ki.ViewCount, ki.CreatedAt, ki.UpdatedAt

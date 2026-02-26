@@ -266,7 +266,7 @@ async function toggleLevel2(req, res, next) {
 async function createKnowledge(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
-    const { level1Id, level2Id, title, displayMode, contentHtml, pdfUrl, sortOrder } = req.body;
+    const { level1Id, level2Id, title, displayMode, contentHtml, pdfUrl, videoUrl, sortOrder } = req.body;
 
     // Validate PDF domain
     if (pdfUrl) {
@@ -287,13 +287,14 @@ async function createKnowledge(req, res, next) {
             .input('DisplayMode', sql.NVarChar(10), displayMode)
             .input('ContentHtml', sql.NVarChar(sql.MAX), contentHtml || null)
             .input('PdfUrl',      sql.NVarChar(1000), pdfUrl || null)
+            .input('VideoUrl',    sql.NVarChar(1000), videoUrl || null)
             .input('SortOrder',   sql.Int, sortOrder ?? 0)
             .input('CreatedBy',   sql.NVarChar(100), req.user.username)
             .query(`
                 INSERT INTO dbo.KnowledgeItems
-                    (Level1Id, Level2Id, Title, DisplayMode, ContentHtml, PdfUrl, SortOrder, CreatedBy)
+                    (Level1Id, Level2Id, Title, DisplayMode, ContentHtml, PdfUrl, VideoUrl, SortOrder, CreatedBy)
                 OUTPUT INSERTED.Id, INSERTED.Title, INSERTED.DisplayMode, INSERTED.CreatedAt
-                VALUES (@Level1Id, @Level2Id, @Title, @DisplayMode, @ContentHtml, @PdfUrl, @SortOrder, @CreatedBy)
+                VALUES (@Level1Id, @Level2Id, @Title, @DisplayMode, @ContentHtml, @PdfUrl, @VideoUrl, @SortOrder, @CreatedBy)
             `);
 
         const row = result.recordset[0];
@@ -313,7 +314,7 @@ async function updateKnowledge(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
     const id = parseInt(req.params.id, 10);
-    const { level1Id, level2Id, title, displayMode, contentHtml, pdfUrl, sortOrder } = req.body;
+    const { level1Id, level2Id, title, displayMode, contentHtml, pdfUrl, videoUrl, sortOrder } = req.body;
 
     if (pdfUrl) {
         const v = validatePdfDomain(pdfUrl);
@@ -334,12 +335,13 @@ async function updateKnowledge(req, res, next) {
             .input('DisplayMode', sql.NVarChar(10), displayMode)
             .input('ContentHtml', sql.NVarChar(sql.MAX), contentHtml || null)
             .input('PdfUrl',      sql.NVarChar(1000), pdfUrl || null)
+            .input('VideoUrl',    sql.NVarChar(1000), videoUrl || null)
             .input('SortOrder',   sql.Int, sortOrder ?? 0)
             .input('UpdatedBy',   sql.NVarChar(100), req.user.username)
             .query(`
                 UPDATE dbo.KnowledgeItems
                 SET Level1Id = @Level1Id, Level2Id = @Level2Id, Title = @Title,
-                    DisplayMode = @DisplayMode, ContentHtml = @ContentHtml, PdfUrl = @PdfUrl,
+                    DisplayMode = @DisplayMode, ContentHtml = @ContentHtml, PdfUrl = @PdfUrl, VideoUrl = @VideoUrl,
                     SortOrder = @SortOrder, UpdatedBy = @UpdatedBy, UpdatedAt = SYSDATETIME()
                 OUTPUT INSERTED.Id, INSERTED.Title, INSERTED.DisplayMode, INSERTED.UpdatedAt
                 WHERE Id = @Id AND DeletedAt IS NULL
