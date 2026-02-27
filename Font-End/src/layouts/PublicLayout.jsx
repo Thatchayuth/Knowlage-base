@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMenu } from '../hooks/useMenu'
 import Spinner from '../components/ui/Spinner'
 import IconRenderer from '../components/ui/IconRenderer'
+import LogoNCR from '../img/NCR-logo-web.png'
 
 function MenuSkeleton() {
   return (
@@ -171,17 +172,18 @@ export default function PublicLayout({ children }) {
         {/* Brand */}
         <div className="flex-shrink-0 px-5 py-5 border-b border-steel-700/50">
           <Link to="/" className="group" onClick={() => setSidebarOpen(false)}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-accent-500/15 border border-accent-500/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <div>
-                <div className="font-display font-bold text-slate-100 text-sm leading-tight group-hover:text-accent-400 transition-colors">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <img
+                src={LogoNCR}
+                alt="NCR Knowledge Base"
+                className="mx-auto h-12 w-auto brightness-0 invert"
+              />
+              
+              <div className="leading-tight">
+                <div className="font-display font-bold text-slate-100 text-base tracking-wide group-hover:text-accent-300 transition-colors">
                   I-FAQ Knowledge Base
                 </div>
-                <div className="text-xs text-slate-500 font-mono">Internal Portal</div>
+                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-500 font-mono">Internal Portal</div>
               </div>
             </div>
           </Link>
@@ -249,8 +251,15 @@ export default function PublicLayout({ children }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="font-display font-bold text-slate-100 text-sm">Knowledge Base</span>
+          <div className="flex items-center gap-3">
+            <img src={LogoNCR} alt="NCR Knowledge Base" className="h-7 w-auto brightness-0 invert" />
+            <div className="leading-tight">
+              <p className="font-display font-semibold text-slate-100 text-sm">I-FAQ Knowledge Base</p>
+              <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Internal Portal</p>
+            </div>
+          </div>
         </div>
+
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
