@@ -216,7 +216,7 @@ export default function KnowledgePage() {
 
             {/* PDF-only mode but no URL */}
             {item.DisplayMode === 'PDF' && !item.PdfUrl && (
-              <div className="panel p-8 text-center">
+              <div className="panel p-8 text-center mt-6">
                 <p className="text-slate-500 font-mono text-sm">PDF file not available.</p>
               </div>
             )}

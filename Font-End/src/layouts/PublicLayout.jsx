@@ -108,8 +108,7 @@ function MenuLevel2({ item, activeId }) {
 function MenuKnowledgeItem({ item, activeId }) {
   const isActive = String(activeId) === String(item.id)
   const badges = []
-  console.log('Rendering MenuKnowledgeItem:', { title: item.title, displayMode: item.displayMode, pdfUrl: item.PdfUrl || item.pdfUrl, videoUrl: item.VideoUrl || item.videoUrl }) 
-  if (item.displayMode) badges.push(item.displayMode)
+  if (item.displayMode) badges.push(item.displayMode === 'PDF' ? 'Files' : 'Page')
   if (item.PdfUrl || item.pdfUrl) badges.push('PDF')
   if (item.VideoUrl || item.videoUrl) badges.push('VIDEO')
   const uniqueBadges = [...new Set(badges)]
@@ -125,7 +124,7 @@ function MenuKnowledgeItem({ item, activeId }) {
         {uniqueBadges.map(badge => (
           <span
             key={badge}
-            className={badge === 'PDF' ? 'text-orange-400/80' : badge === 'VIDEO' ? 'text-purple-300' : 'text-slate-500'}
+            className={badge === 'Files' ? 'text-orange-400/80' : badge === 'Page' ? 'text-purple-300' : 'text-slate-500'}
           >
             {badge}
           </span>

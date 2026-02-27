@@ -94,6 +94,7 @@ export default function HomePage() {
 }
 
 function FeaturedCard({ item }) {
+  console.log('Testttt', item)
   return (
     <Link
       to={`/knowledge/${item.id}`}
@@ -124,8 +125,9 @@ function FeaturedCard({ item }) {
             Highlight
           </span>
         )}
-        {(item.videoUrl || item.VideoUrl) && <span className="text-purple-300">Video</span>}
-        {(item.pdfUrl || item.PdfUrl) && <span className="text-orange-300">PDF</span>}
+        {item.displayMode === 'PDF' && <span className="text-orange-400/80">Files</span>}
+        {item.displayMode === 'PAGE' && <span className="text-purple-300">Page</span>}
+  
       </div>
     </Link>
   )
