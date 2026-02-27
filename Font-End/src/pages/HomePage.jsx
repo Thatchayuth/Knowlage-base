@@ -98,7 +98,7 @@ function FeaturedCard({ item }) {
   return (
     <Link
       to={`/knowledge/${item.id}`}
-      className="panel p-5 flex flex-col gap-2 hover:border-steel-600/80 transition-colors group"
+      className="panel p-5 flex flex-col gap-2 hover:border-white/30 transition-colors group"
     >
       <div className="flex items-center justify-between">
         <div>
@@ -132,3 +132,4 @@ function FeaturedCard({ item }) {
     </Link>
   )
 }
+

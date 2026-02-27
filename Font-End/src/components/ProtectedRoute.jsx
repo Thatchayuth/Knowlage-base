@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children, requiredRole = 'admin' }) {
 
   if (loading || verifying) {
     return (
-      <div className="min-h-screen bg-navy-950 flex items-center justify-center">
+      <div className="min-h-screen app-shell flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
           <p className="text-slate-400 text-sm font-mono">Verifying access…</p>

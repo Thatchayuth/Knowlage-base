@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMenu } from '../hooks/useMenu'
 import Spinner from '../components/ui/Spinner'
@@ -54,7 +54,7 @@ function MenuLevel1({ item, activeId }) {
       </button>
 
       {expanded && (
-        <div className="ml-1 border-l border-steel-700/50 pl-1 ml-4">
+        <div className="ml-1 border-l border-white/10 pl-1 ml-4">
           {hasL2 && item.level2.map(l2 => (
             <MenuLevel2 key={l2.id} item={l2} activeId={activeId} />
           ))}
@@ -96,7 +96,7 @@ function MenuLevel2({ item, activeId }) {
       </button>
 
       {expanded && item.items?.length > 0 && (
-        <div className="ml-3 border-l border-steel-700/40 pl-1">
+        <div className="ml-3 border-l border-white/10 pl-1">
           {item.items.map(ki => (
             <MenuKnowledgeItem key={ki.id} item={ki} activeId={activeId} />
           ))}
@@ -152,11 +152,11 @@ export default function PublicLayout({ children }) {
   }, [searchQ, navigate])
 
   return (
-    <div className="min-h-screen bg-navy-950 flex">
+    <div className="min-h-screen app-shell flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-navy-950/80 lg:hidden"
+          className="fixed inset-0 z-20 app-overlay lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -164,13 +164,13 @@ export default function PublicLayout({ children }) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-30 w-72 flex flex-col bg-steel-900 border-r border-steel-700/50
+          fixed top-0 left-0 h-full z-30 w-72 flex flex-col glass-panel border border-white/10
           transition-transform duration-300 lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         {/* Brand */}
-        <div className="flex-shrink-0 px-5 py-5 border-b border-steel-700/50">
+        <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
           <Link to="/" className="group" onClick={() => setSidebarOpen(false)}>
             <div className="flex flex-col items-center gap-3 text-center">
               <img
@@ -225,10 +225,10 @@ export default function PublicLayout({ children }) {
         </div>
 
         {/* Footer links */}
-        <div className="flex-shrink-0 border-t border-steel-700/50 px-4 py-3">
+        <div className="flex-shrink-0 border-t border-white/10 px-4 py-3">
           <Link
             to="/administrator"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-500 hover:text-slate-300 hover:bg-steel-800 transition-colors font-mono"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-colors font-mono"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -242,10 +242,10 @@ export default function PublicLayout({ children }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-steel-900 border-b border-steel-700/50">
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 backdrop-blur-lg">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-steel-800 rounded-lg transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-white/10 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -269,4 +269,5 @@ export default function PublicLayout({ children }) {
     </div>
   )
 }
+
 

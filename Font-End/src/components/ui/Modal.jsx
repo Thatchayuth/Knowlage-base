@@ -15,16 +15,16 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
   return (
     <>
       <div
-        className="fixed inset-0 bg-navy-950/70 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-navy-900/50 backdrop-blur-sm z-40"
         onClick={onClose}
       />
 
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-steel-900 border border-steel-700/60 shadow-panel animate-fade-in"
+          className="w-full max-w-lg max-h-[90vh] overflow-y-auto glass-panel animate-fade-in"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between px-6 py-5 border-b border-steel-700/60">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-white/12">
             <div>
               <p className="text-xs font-mono uppercase tracking-[0.25em] text-slate-500">CONFIRMATION</p>
               <h2 className="font-display text-lg font-semibold text-slate-100">{title}</h2>
@@ -42,7 +42,7 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
           </div>
 
           {footer && (
-            <div className="px-6 py-4 border-t border-steel-700/60 bg-steel-900/70 flex gap-3 justify-end">
+            <div className="px-6 py-4 border-t border-white/10 bg-white/5 flex gap-3 justify-end backdrop-blur-lg">
               {footer}
             </div>
           )}
@@ -51,3 +51,4 @@ export default function Modal({ isOpen, onClose, title, children, footer }) {
     </>
   )
 }
+

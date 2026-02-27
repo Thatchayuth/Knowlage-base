@@ -77,7 +77,7 @@ export default function AdminLevel1Page() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-steel-700/50">
+              <tr className="border-b border-white/10">
                 <th className="text-left px-5 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Name</th>
                 <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Sort</th>
                 <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Sub-cats</th>
@@ -125,3 +125,4 @@ export default function AdminLevel1Page() {
     </div>
   )
 }
+

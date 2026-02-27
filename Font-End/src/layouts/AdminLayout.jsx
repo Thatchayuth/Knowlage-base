@@ -24,21 +24,21 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 flex">
+    <div className="min-h-screen app-shell flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-20 bg-navy-950/80 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-20 app-overlay lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
       <aside className={`
         fixed top-0 left-0 h-full z-30 w-64 flex flex-col
-        bg-steel-900 border-r border-steel-700/50
+        glass-panel border border-white/10
         transition-transform duration-300 lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Brand */}
-        <div className="flex-shrink-0 px-5 py-5 border-b border-steel-700/50">
+        <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-accent-500/15 border border-accent-500/30 flex items-center justify-center">
               <svg className="w-4 h-4 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +87,7 @@ export default function AdminLayout({ children }) {
             )
           })}
 
-          <div className="pt-3 border-t border-steel-700/40 mt-3">
+          <div className="pt-3 border-t border-white/10 mt-3">
             <Link
               to="/"
               className="nav-item nav-item-hover"
@@ -102,7 +102,7 @@ export default function AdminLayout({ children }) {
         </nav>
 
         {/* Logout */}
-        <div className="flex-shrink-0 p-3 border-t border-steel-700/50">
+        <div className="flex-shrink-0 p-3 border-t border-white/10">
           <button
             onClick={handleLogout}
             className="w-full nav-item nav-item-hover text-red-400 hover:text-red-300 hover:bg-red-500/10"
@@ -118,10 +118,10 @@ export default function AdminLayout({ children }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         {/* Mobile topbar */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-steel-900 border-b border-steel-700/50">
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 backdrop-blur-lg">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-steel-800 rounded-lg transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-white/10 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

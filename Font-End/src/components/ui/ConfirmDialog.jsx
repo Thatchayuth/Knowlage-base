@@ -28,7 +28,7 @@ export default function ConfirmDialog(props) {
           <button
             onClick={onClose}
             disabled={resolvedLoading}
-            className="px-4 py-2 rounded-lg border border-steel-600 text-slate-300 hover:text-white hover:bg-steel-700/60 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg border border-white/25 text-slate-300 hover:text-white hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
@@ -50,3 +50,4 @@ export default function ConfirmDialog(props) {
     </Modal>
   )
 }
+

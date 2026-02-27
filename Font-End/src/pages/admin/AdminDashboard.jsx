@@ -9,7 +9,7 @@ function StatCard({ label, value, icon, color, href }) {
   return (
     <Wrapper
       to={href}
-      className={`panel p-5 flex items-center gap-4 ${href ? 'hover:border-steel-600/80 transition-colors group' : ''}`}
+      className={`panel p-5 flex items-center gap-4 ${href ? 'hover:border-white/30 transition-colors group' : ''}`}
     >
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@ export default function AdminDashboard() {
       {/* Structure preview */}
       {!loading && menu.length > 0 && (
         <div className="panel overflow-hidden">
-          <div className="px-5 py-4 border-b border-steel-700/50">
+          <div className="px-5 py-4 border-b border-white/10">
             <h2 className="font-display font-semibold text-slate-200 text-sm">Knowledge Structure</h2>
           </div>
           <div className="divide-y divide-steel-800/60 max-h-80 overflow-y-auto">
@@ -163,7 +163,7 @@ function QuickAction({ href, title, desc, color }) {
   return (
     <Link
       to={href}
-      className="panel p-5 hover:border-steel-600/80 transition-colors group"
+      className="panel p-5 hover:border-white/30 transition-colors group"
     >
       <div className="flex items-center justify-between mb-3">
         <span className={`font-display font-semibold text-sm ${color}`}>{title}</span>
@@ -175,3 +175,4 @@ function QuickAction({ href, title, desc, color }) {
     </Link>
   )
 }
+

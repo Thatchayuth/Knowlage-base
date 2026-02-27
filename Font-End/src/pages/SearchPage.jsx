@@ -84,7 +84,7 @@ export default function SearchPage() {
 
         {/* Meta */}
         {results && !loading && (
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-steel-700/40">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div className="text-sm text-slate-400">
               <span className="text-slate-100 font-semibold">{results.totalResults}</span> results for{' '}
               <span className="text-accent-400 font-mono">"{results.query}"</span>
@@ -129,7 +129,7 @@ export default function SearchPage() {
               <Link
                 key={item.id}
                 to={`/knowledge/${item.id}`}
-                className="block panel p-5 hover:border-steel-600/80 hover:bg-steel-900/80 transition-all group"
+                className="block panel p-5 hover:border-white/30 hover:bg-white/10 transition-all group"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -164,7 +164,7 @@ export default function SearchPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-steel-800/60">
+                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/12">
                   <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -193,3 +193,4 @@ export default function SearchPage() {
     </PublicLayout>
   )
 }
+

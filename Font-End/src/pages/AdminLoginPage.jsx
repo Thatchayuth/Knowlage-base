@@ -53,12 +53,12 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 flex items-center justify-center p-4">
+    <div className="min-h-screen app-shell flex items-center justify-center p-4">
       {/* Background grid decoration */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03]"
         style={{
-          backgroundImage: 'linear-gradient(#00c8ff 1px, transparent 1px), linear-gradient(90deg, #00c8ff 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(#24c8ff 1px, transparent 1px), linear-gradient(90deg, #24c8ff 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }}
       />

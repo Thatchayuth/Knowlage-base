@@ -77,9 +77,9 @@ export default function App() {
 
             {/* 404 */}
             <Route path="*" element={
-              <div className="min-h-screen bg-navy-950 flex items-center justify-center">
+              <div className="min-h-screen app-shell flex items-center justify-center">
                 <div className="text-center">
-                  <div className="font-display font-bold text-8xl text-steel-800 mb-4">404</div>
+                  <div className="font-display font-bold text-8xl text-steel-500 mb-4">404</div>
                   <p className="text-slate-400 mb-6">Page not found</p>
                   <a href="/" className="btn-primary">Go home</a>
                 </div>

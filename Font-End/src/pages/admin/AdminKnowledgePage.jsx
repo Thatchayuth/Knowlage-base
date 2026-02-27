@@ -115,7 +115,7 @@ export default function AdminKnowledgePage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-steel-700/50">
+              <tr className="border-b border-white/10">
                 <th className="text-left px-5 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Title</th>
                 <th className="text-left px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider hidden md:table-cell">Category</th>
                 <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Mode</th>
@@ -173,3 +173,4 @@ export default function AdminKnowledgePage() {
     </div>
   )
 }
+

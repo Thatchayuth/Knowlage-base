@@ -117,7 +117,7 @@ export default function KnowledgePage() {
             {/* PDF display mode: embed/link the PDF */}
             {item.DisplayMode === 'PDF' && item.PdfUrl && (
               <div className="panel overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-steel-700/50">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -201,14 +201,14 @@ export default function KnowledgePage() {
                       title="Knowledge video"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                      className="absolute inset-0 w-full h-full rounded-xl border border-steel-700/60"
+                      className="absolute inset-0 w-full h-full rounded-xl border border-white/12"
                     />
                   </div>
                 ) : (
                   <video
                     controls
                     src={videoEmbed.src}
-                    className="w-full rounded-xl border border-steel-700/60"
+                    className="w-full rounded-xl border border-white/12"
                   />
                 )}
               </div>
@@ -226,3 +226,4 @@ export default function KnowledgePage() {
     </PublicLayout>
   )
 }
+

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Spinner from '../ui/Spinner'
 
 export default function KnowledgeForm({ initialData, level1List, onSubmit, onCancel, loading }) {
@@ -110,7 +110,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
                   ? mode === 'PDF'
                     ? 'bg-orange-500/15 border-orange-500/40 text-orange-400'
                     : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                  : 'bg-steel-800 border-steel-700 text-slate-500 hover:text-slate-300'
+                  : 'bg-steel-800 border-white/15 text-slate-500 hover:text-slate-300'
               }`}
             >
               {mode}
@@ -163,7 +163,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
                 Preview rendered HTML
               </summary>
               <div
-                className="mt-2 p-4 rounded-lg bg-navy-900 border border-steel-700/50 km-content text-sm max-h-48 overflow-y-auto"
+                className="mt-2 p-4 rounded-lg bg-white/5 border border-white/10 km-content text-sm max-h-48 overflow-y-auto"
                 dangerouslySetInnerHTML={{ __html: contentHtml }}
               />
             </details>
@@ -201,3 +201,4 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     </form>
   )
 }
+
