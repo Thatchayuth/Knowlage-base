@@ -71,18 +71,18 @@ export default function HomePage() {
             <p className="text-xs text-slate-500 font-mono">Top Highlighted & Most Viewed</p>
           </div>
           {featuredLoading ? (
-            <div className="grid grid-cols-1 gap-3">
-              {[1,2,3].map(i => (
-                <div key={i} className="panel p-4 skeleton h-20" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(12).keys()].map(i => (
+                <div key={i} className="panel p-4 skeleton h-32" />
               ))}
-            </div>
+          </div>
           ) : featuredError ? (
             <p className="text-sm text-red-400 font-mono">{featuredError}</p>
           ) : featured.length === 0 ? (
             <p className="text-sm text-slate-500">No featured documents yet.</p>
           ) : (
-            <div className="space-y-3">
-              {featured.map(item => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {featured.slice(0, 12).map(item => (
                 <FeaturedCard key={item.id} item={item} />
               ))}
             </div>
@@ -103,9 +103,9 @@ function FeaturedCard({ item }) {
       <div className="flex items-center justify-between">
         <div>
           {item.level2Name ? (
-            <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500">{item.level1Name} / {item.level2Name}</p>
+            <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500 mt-1">{item.level1Name} / {item.level2Name}</p>
           ) : (
-            <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500">{item.level1Name}</p>
+            <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500 mt-1">{item.level1Name}</p>
           )}
           <h3 className="font-display font-semibold text-slate-100 text-lg group-hover:text-accent-300 transition-colors">
             {item.title}
@@ -122,7 +122,7 @@ function FeaturedCard({ item }) {
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.785.57-1.84-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
-            Highlight
+            Highlight 
           </span>
         )}
         {item.displayMode === 'PDF' && <span className="text-orange-400/80">Files</span>}

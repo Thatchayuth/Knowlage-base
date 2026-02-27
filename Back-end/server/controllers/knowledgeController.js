@@ -166,7 +166,7 @@ async function getFeaturedKnowledge(req, res, next) {
     try {
         const pool = await getPool();
         const result = await pool.request().query(`
-            SELECT TOP 50 ki.Id, ki.Title, ki.Highlight, ki.ViewCount, ki.UpdatedAt,
+            SELECT TOP 24 ki.Id, ki.Title, ki.Highlight, ki.ViewCount, ki.UpdatedAt,
                    ki.Level1Id, l1.Name AS Level1Name,
                    ki.Level2Id, l2.Name AS Level2Name
             FROM dbo.KnowledgeItems ki
@@ -202,4 +202,3 @@ async function getFeaturedKnowledge(req, res, next) {
 }
 
 module.exports = { getMenu, getKnowledgeById, getFeaturedKnowledge };
-

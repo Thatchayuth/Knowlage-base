@@ -1,6 +1,8 @@
 'use strict';
-
-require('dotenv').config();
+require('dotenv').config({
+  path: require('path').join(__dirname, '../.env')
+});
+// require('dotenv').config();
 
 const express    = require('express');
 const helmet     = require('helmet');
@@ -20,7 +22,7 @@ const app  = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 const cors = require('cors');
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://10.10.0.69:5173';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.69:5173';
 // || 'http://localhost:5173' 
 // CORS: allow front-end dev server and production origin (from env)
 app.use(cors({
@@ -202,3 +204,4 @@ async function start() {
 start();
 
 module.exports = app;
+
