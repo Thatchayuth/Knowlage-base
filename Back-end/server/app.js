@@ -22,7 +22,7 @@ const app  = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 const cors = require('cors');
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.69:5173,http://192.168.8.120:4200,http://192.168.8.120:8000';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.73:5173,http://192.168.8.120:4200,http://192.168.8.120:8000';
 // || 'http://localhost:5173' 
 // CORS: allow front-end dev server and production origin (from env)
 app.use(cors({
