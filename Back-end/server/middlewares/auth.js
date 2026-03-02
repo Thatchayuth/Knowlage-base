@@ -110,5 +110,85 @@ function _getIp(req) {
         req.connection?.remoteAddress ||
         'unknown';
 }
+async function authenticateADother(req, res) {
 
-module.exports = { authenticateAD, authorizeGroup, requireAuth };
+    const startTime = Date.now();
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const ua = req.get('user-agent') || '';
+
+    const authHeader = req.get('Authorization') || '';
+    if (!authHeader.startsWith('Basic ')) {
+        return res.status(401).json({
+            error: 'Authentication required',
+            code: 'NO_AUTH'
+        });
+    }
+
+    let username, password;
+
+    try {
+        const decoded = Buffer
+            .from(authHeader.slice(6), 'base64')
+            .toString('utf8');
+
+        const sep = decoded.indexOf(':');
+        if (sep === -1) throw new Error('Invalid format');
+
+        username = decoded.substring(0, sep).trim().toLowerCase();
+        password = decoded.substring(sep + 1);
+
+    } catch {
+        return res.status(401).json({
+            error: 'Invalid Authorization header',
+            code: 'INVALID_AUTH'
+        });
+    }
+
+    if (!username || !password) {
+        return res.status(401).json({
+            error: 'Username and password required',
+            code: 'EMPTY_CREDS'
+        });
+    }
+
+    try {
+        const user = await authenticateUser(username, password);
+
+        // ===== Extract group names only =====
+        const groupNames = [...new Set(
+            (user.groups || [])
+                .map(dn => {
+                    if (!dn) return null;
+                    const firstPart = dn.split(',')[0];
+                    return firstPart.replace(/^CN=/i, '').trim();
+                })
+                .filter(Boolean)
+        )];
+
+        return res.json({
+            success: true,
+            username: user.username,
+            groups: groupNames,
+            executionTimeMs: Date.now() - startTime
+        });
+
+    } catch (err) {
+
+        if (
+            err.message === 'Invalid credentials' ||
+            err.message === 'User not found in directory'
+        ) {
+            return res.status(401).json({
+                error: 'Invalid username or password',
+                code: 'INVALID_CREDS'
+            });
+        }
+
+        return res.status(503).json({
+            error: 'Authentication service unavailable',
+            code: 'AUTH_UNAVAILABLE'
+        });
+    }
+}
+
+module.exports = { authenticateAD, authorizeGroup, requireAuth , authenticateADother};
