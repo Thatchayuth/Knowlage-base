@@ -9,7 +9,7 @@ function StatCard({ label, value, icon, color, href }) {
   return (
     <Wrapper
       to={href}
-      className={`panel p-5 flex items-center gap-4 ${href ? 'hover:border-white/30 transition-colors group' : ''}`}
+      className={`panel p-5 flex items-center gap-4 ${href ? 'hover:border-brand/30 transition-colors group' : ''}`}
     >
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,11 +17,11 @@ function StatCard({ label, value, icon, color, href }) {
         </svg>
       </div>
       <div>
-        <div className="text-2xl font-display font-bold text-slate-100 tabular-nums">{value}</div>
-        <div className="text-xs text-slate-500 font-mono">{label}</div>
+        <div className="text-2xl font-display font-bold text-brand-ink tabular-nums">{value}</div>
+        <div className="text-xs text-steel-500 font-mono">{label}</div>
       </div>
       {href && (
-        <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 ml-auto transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-steel-600 group-hover:text-steel-400 ml-auto transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       )}
@@ -61,9 +61,9 @@ export default function AdminDashboard() {
     <div className="max-w-5xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="mb-8">
-        <p className="text-xs font-mono text-slate-500 mb-1">Welcome back</p>
-        <h1 className="font-display font-bold text-3xl text-slate-100">
-          {user?.username} <span className="text-slate-500 font-normal text-xl">/ dashboard</span>
+        <p className="text-xs font-mono text-steel-500 mb-1">Welcome back</p>
+        <h1 className="font-display font-bold text-3xl text-brand-ink">
+          {user?.username} <span className="text-steel-500 font-normal text-xl">/ dashboard</span>
         </h1>
       </div>
 
@@ -127,8 +127,8 @@ export default function AdminDashboard() {
       {/* Structure preview */}
       {!loading && menu.length > 0 && (
         <div className="panel overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10">
-            <h2 className="font-display font-semibold text-slate-200 text-sm">Knowledge Structure</h2>
+          <div className="px-5 py-4 border-b border-gray-200">
+            <h2 className="font-display font-semibold text-brand-ink text-sm">Knowledge Structure</h2>
           </div>
           <div className="divide-y divide-steel-800/60 max-h-80 overflow-y-auto">
             {menu.map(l1 => (
@@ -137,17 +137,17 @@ export default function AdminDashboard() {
                   <svg className="w-3.5 h-3.5 text-accent-500/70" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                   </svg>
-                  <span className="font-display font-semibold text-sm text-slate-100">{l1.name}</span>
-                  <span className="ml-auto text-xs text-slate-600 tabular-nums font-mono">
+                  <span className="font-display font-semibold text-sm text-brand-ink">{l1.name}</span>
+                  <span className="ml-auto text-xs text-steel-600 tabular-nums font-mono">
                     {(l1.directItems?.length || 0) + (l1.level2?.reduce((a,l2) => a+(l2.items?.length||0),0)||0)} docs
                   </span>
                 </div>
                 {l1.level2?.map(l2 => (
                   <div key={l2.id} className="flex items-center gap-2 ml-4 py-0.5">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${l2.isEnabled ? 'bg-emerald-500' : 'bg-red-500/70'}`} />
-                    <span className={`text-xs ${l2.isEnabled ? 'text-slate-400' : 'text-slate-600 line-through'}`}>{l2.name}</span>
+                    <span className={`text-xs ${l2.isEnabled ? 'text-steel-400' : 'text-steel-600 line-through'}`}>{l2.name}</span>
                     {!l2.isEnabled && <span className="text-xs font-mono text-yellow-600">disabled</span>}
-                    <span className="ml-auto text-xs text-slate-600 tabular-nums">{l2.items?.length || 0}</span>
+                    <span className="ml-auto text-xs text-steel-600 tabular-nums">{l2.items?.length || 0}</span>
                   </div>
                 ))}
               </div>
@@ -163,15 +163,15 @@ function QuickAction({ href, title, desc, color }) {
   return (
     <Link
       to={href}
-      className="panel p-5 hover:border-white/30 transition-colors group"
+      className="panel p-5 hover:border-brand/30 transition-colors group"
     >
       <div className="flex items-center justify-between mb-3">
         <span className={`font-display font-semibold text-sm ${color}`}>{title}</span>
-        <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-steel-600 group-hover:text-steel-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </div>
-      <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
+      <p className="text-xs text-steel-500 leading-relaxed">{desc}</p>
     </Link>
   )
 }

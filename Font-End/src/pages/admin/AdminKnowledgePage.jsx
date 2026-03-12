@@ -80,8 +80,8 @@ export default function AdminKnowledgePage() {
     <div className="max-w-5xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-slate-100">Knowledge Items</h1>
-          <p className="text-slate-500 text-sm mt-1">Manage PDF and PAGE type knowledge documents</p>
+          <h1 className="font-display font-bold text-2xl text-brand-ink">Knowledge Items</h1>
+          <p className="text-steel-500 text-sm mt-1">Manage PDF and PAGE type knowledge documents</p>
         </div>
         <button className="btn-primary" onClick={openCreate}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +102,7 @@ export default function AdminKnowledgePage() {
           <option value="PAGE">PAGE</option>
           <option value="PDF">PDF</option>
         </select>
-        <span className="text-xs text-slate-500 font-mono">{filtered.length} items</span>
+        <span className="text-xs text-steel-500 font-mono">{filtered.length} items</span>
       </div>
 
       <div className="panel overflow-hidden">
@@ -110,15 +110,15 @@ export default function AdminKnowledgePage() {
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-slate-500 text-sm">No knowledge items found.</p>
+            <p className="text-steel-500 text-sm">No knowledge items found.</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left px-5 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Title</th>
-                <th className="text-left px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider hidden md:table-cell">Category</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Mode</th>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-5 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Title</th>
+                <th className="text-left px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider hidden md:table-cell">Category</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Mode</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -130,16 +130,16 @@ export default function AdminKnowledgePage() {
                       href={`/knowledge/${item.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-slate-200 hover:text-accent-300 transition-colors truncate block max-w-sm"
+                      className="font-medium text-brand-ink hover:text-accent-300 transition-colors truncate block max-w-sm"
                     >
                       {item.title}
                     </a>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <div className="flex flex-col">
-                      <span className="text-xs text-slate-400">{item.level1Name}</span>
+                      <span className="text-xs text-steel-400">{item.level1Name}</span>
                       {item.level2Name && (
-                        <span className="text-xs text-slate-600">{item.level2Name}</span>
+                        <span className="text-xs text-steel-600">{item.level2Name}</span>
                       )}
                     </div>
                   </td>

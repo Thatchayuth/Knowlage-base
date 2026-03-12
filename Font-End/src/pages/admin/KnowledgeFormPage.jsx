@@ -99,8 +99,8 @@ export default function KnowledgeFormPage() {
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       <div className="mb-6">
-        <p className="text-xs font-mono text-slate-500 mb-1">{isEdit ? 'Modify content or metadata' : 'Create a new knowledge entry'}</p>
-        <h1 className="font-display font-bold text-2xl text-slate-100">{title}</h1>
+        <p className="text-xs font-mono text-steel-500 mb-1">{isEdit ? 'Modify content or metadata' : 'Create a new knowledge entry'}</p>
+        <h1 className="font-display font-bold text-2xl text-brand-ink">{title}</h1>
       </div>
       <div className="panel p-6">
         {loading ? (

@@ -57,14 +57,14 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Level 1 *</label>
+          <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Level 1 *</label>
           <select className="input-field" value={level1Id} onChange={e => setLevel1Id(e.target.value)} required>
             <option value="">Select…</option>
             {level1List.map(l1 => <option key={l1.id} value={l1.id}>{l1.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Level 2</label>
+          <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Level 2</label>
           <select className="input-field" value={level2Id} onChange={e => setLevel2Id(e.target.value)} disabled={!level2Options.length}>
             <option value="">(none / direct)</option>
             {level2Options.map(l2 => <option key={l2.id} value={l2.id}>{l2.name}</option>)}
@@ -73,7 +73,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-xs font-mono text-slate-400">
+        <label className="flex items-center gap-2 text-xs font-mono text-steel-400">
           <input
             type="checkbox"
             className="form-checkbox"
@@ -85,7 +85,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Title *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Title *</label>
         <input
           type="text"
           className="input-field"
@@ -98,7 +98,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Display Mode *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Display Mode *</label>
         <div className="flex gap-3">
           {['PAGE', 'PDF'].map(mode => (
             <button
@@ -110,7 +110,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
                   ? mode === 'PDF'
                     ? 'bg-orange-500/15 border-orange-500/40 text-orange-400'
                     : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                  : 'bg-steel-800 border-white/15 text-slate-500 hover:text-slate-300'
+                  : 'bg-steel-800 border-white/15 text-steel-500 hover:text-steel-300'
               }`}
             >
               {mode}
@@ -120,7 +120,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">
           PDF URL {displayMode === 'PDF' ? '*' : '(optional)'}
         </label>
         <input
@@ -131,11 +131,11 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
           placeholder="http://fileserver.internal/docs/file.pdf"
           required={displayMode === 'PDF'}
         />
-        <p className="text-xs text-slate-600 mt-1">Must be on an approved internal domain.</p>
+        <p className="text-xs text-steel-600 mt-1">Must be on an approved internal domain.</p>
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Video URL (optional)</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Video URL (optional)</label>
         <input
           type="url"
           className="input-field font-mono text-sm"
@@ -143,12 +143,12 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
           onChange={e => setVideoUrl(e.target.value)}
           placeholder="https://youtube.com/embed/... or https://media.local/video.mp4"
         />
-        <p className="text-xs text-slate-600 mt-1">Supports direct MP4 links or embeddable URLs (YouTube, etc.).</p>
+        <p className="text-xs text-steel-600 mt-1">Supports direct MP4 links or embeddable URLs (YouTube, etc.).</p>
       </div>
 
       {displayMode === 'PAGE' && (
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">HTML Content *</label>
+          <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">HTML Content *</label>
           <textarea
             className="input-field font-mono text-xs leading-relaxed resize-none"
             rows={10}
@@ -159,7 +159,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
           />
           {contentHtml && (
             <details className="mt-2">
-              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300 transition-colors font-mono">
+              <summary className="text-xs text-steel-500 cursor-pointer hover:text-steel-300 transition-colors font-mono">
                 Preview rendered HTML
               </summary>
               <div
@@ -172,7 +172,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       )}
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
         <input
           type="number"
           className="input-field"

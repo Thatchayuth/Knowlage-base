@@ -89,8 +89,8 @@ export default function AdminLevel2Page() {
     <div className="max-w-5xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-slate-100">Level 2 Sub-categories</h1>
-          <p className="text-slate-500 text-sm mt-1">Enable or disable sub-categories to control navigation</p>
+          <h1 className="font-display font-bold text-2xl text-brand-ink">Level 2 Sub-categories</h1>
+          <p className="text-steel-500 text-sm mt-1">Enable or disable sub-categories to control navigation</p>
         </div>
         <button className="btn-primary" onClick={() => navigate('/administrator/level2/new')}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ export default function AdminLevel2Page() {
             <option key={l1.id} value={l1.id}>{l1.name}</option>
           ))}
         </select>
-        <span className="text-xs text-slate-500 font-mono">{filtered.length} items</span>
+        <span className="text-xs text-steel-500 font-mono">{filtered.length} items</span>
       </div>
 
       <div className="panel overflow-hidden">
@@ -120,17 +120,17 @@ export default function AdminLevel2Page() {
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-slate-500 text-sm">No sub-categories found.</p>
+            <p className="text-steel-500 text-sm">No sub-categories found.</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left px-5 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Parent</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Sort</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Docs</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Status</th>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-5 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Parent</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Sort</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Docs</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -138,13 +138,13 @@ export default function AdminLevel2Page() {
               {filtered.map(item => (
                 <tr key={item.id} className="hover:bg-steel-800/30 transition-colors group">
                   <td className="px-5 py-3">
-                    <span className={`font-medium ${item.isEnabled ? 'text-slate-200' : 'text-slate-500 line-through'}`}>
+                    <span className={`font-medium ${item.isEnabled ? 'text-brand-ink' : 'text-steel-500 line-through'}`}>
                       {item.name}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-400 font-mono">{item.level1Name}</td>
-                  <td className="px-4 py-3 text-center text-xs font-mono text-slate-500">{item.sortOrder}</td>
-                  <td className="px-4 py-3 text-center text-xs tabular-nums text-slate-400">{item.docCount}</td>
+                  <td className="px-4 py-3 text-xs text-steel-400 font-mono">{item.level1Name}</td>
+                  <td className="px-4 py-3 text-center text-xs font-mono text-steel-500">{item.sortOrder}</td>
+                  <td className="px-4 py-3 text-center text-xs tabular-nums text-steel-400">{item.docCount}</td>
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => handleToggle(item)}

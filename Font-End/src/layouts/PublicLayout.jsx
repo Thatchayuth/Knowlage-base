@@ -54,7 +54,7 @@ function MenuLevel1({ item, activeId }) {
       </button>
 
       {expanded && (
-        <div className="ml-1 border-l border-white/10 pl-1 ml-4">
+        <div className="ml-1 border-l border-white/30 pl-1 ml-4">
           {hasL2 && item.level2.map(l2 => (
             <MenuLevel2 key={l2.id} item={l2} activeId={activeId} />
           ))}
@@ -96,7 +96,7 @@ function MenuLevel2({ item, activeId }) {
       </button>
 
       {expanded && item.items?.length > 0 && (
-        <div className="ml-3 border-l border-white/10 pl-1">
+        <div className="ml-3 border-l border-white/30 pl-1">
           {item.items.map(ki => (
             <MenuKnowledgeItem key={ki.id} item={ki} activeId={activeId} />
           ))}
@@ -109,9 +109,9 @@ function MenuLevel2({ item, activeId }) {
 function MenuKnowledgeItem({ item, activeId }) {
   const isActive = String(activeId) === String(item.id)
   const badges = []
-  if (item.displayMode) badges.push(item.displayMode === 'PDF' ? 'Files' : 'Page')
-  if (item.PdfUrl || item.pdfUrl) badges.push('PDF')
-  if (item.VideoUrl || item.videoUrl) badges.push('VIDEO')
+  // if (item.displayMode) badges.push(item.displayMode === 'PDF' ? 'Files' : 'Page')
+  // if (item.PdfUrl || item.pdfUrl) badges.push('PDF')
+  // if (item.VideoUrl || item.videoUrl) badges.push('VIDEO')
   const uniqueBadges = [...new Set(badges)]
 
   return (
@@ -164,21 +164,20 @@ export default function PublicLayout({ children }) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-30 w-72 flex flex-col glass-panel border border-white/10
+          fixed top-0 left-0 h-full z-30 w-72 flex flex-col bg-brand text-white border border-brand/40
           transition-transform duration-300 lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         {/* Brand */}
-        <div className="flex-shrink-0 px-5 py-5 border-b border-white/10">
+        <div className="flex-shrink-0 px-5 py-5 border-b border-white/10 bg-white/2">
           <Link to="/" className="group" onClick={() => setSidebarOpen(false)}>
             <div className="flex flex-col items-center gap-3 text-center">
-              <img
-                src={LogoNCR}
-                alt="NCR Knowledge Base"
-                className="mx-auto h-12 w-auto brightness-0 invert"
-              />
-              
+          <img
+            src={LogoNCR}
+            alt="NCR Knowledge Base"
+            className="mx-auto h-16 w-auto"
+          />         
               <div className="leading-tight">
                 <div className="font-display font-bold text-slate-100 text-base tracking-wide group-hover:text-accent-300 transition-colors">
                   I-FAQ Knowledge Base
@@ -189,7 +188,7 @@ export default function PublicLayout({ children }) {
           </Link>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="mt-4">
+          {/* <form onSubmit={handleSearch} className="mt-4">
             <div className="relative">
               <input
                 type="search"
@@ -207,7 +206,7 @@ export default function PublicLayout({ children }) {
                 </svg>
               </button>
             </div>
-          </form>
+          </form> */}
         </div>
 
         {/* Menu tree */}
@@ -225,10 +224,10 @@ export default function PublicLayout({ children }) {
         </div>
 
         {/* Footer links */}
-        <div className="flex-shrink-0 border-t border-white/10 px-4 py-3">
+        <div className="flex-shrink-0 border-t border-white/30 px-4 py-3">
           <Link
             to="/administrator"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-colors font-mono"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors font-mono"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -242,7 +241,7 @@ export default function PublicLayout({ children }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 backdrop-blur-lg">
+        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-brand text-white">
           <button
             onClick={() => setSidebarOpen(true)}
             className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-white/10 rounded-lg transition-colors"
@@ -252,7 +251,7 @@ export default function PublicLayout({ children }) {
             </svg>
           </button>
           <div className="flex items-center gap-3">
-            <img src={LogoNCR} alt="NCR Knowledge Base" className="h-7 w-auto brightness-0 invert" />
+            <img src={LogoNCR} alt="NCR Knowledge Base" className="h-7 w-auto" />
             <div className="leading-tight">
               <p className="font-display font-semibold text-slate-100 text-sm">I-FAQ Knowledge Base</p>
               <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Internal Portal</p>

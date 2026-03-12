@@ -4,6 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: '#0a1855',
         navy: {
           950: '#050c1d',
           900: '#09142b',

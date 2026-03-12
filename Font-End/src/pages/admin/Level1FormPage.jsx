@@ -57,8 +57,8 @@ export default function Level1FormPage() {
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
       <div className="mb-6">
-        <p className="text-xs font-mono text-slate-500 mb-1">{isEdit ? 'Update existing category' : 'Create a new top-level category'}</p>
-        <h1 className="font-display font-bold text-2xl text-slate-100">{title}</h1>
+        <p className="text-xs font-mono text-steel-500 mb-1">{isEdit ? 'Update existing category' : 'Create a new top-level category'}</p>
+        <h1 className="font-display font-bold text-2xl text-brand-ink">{title}</h1>
       </div>
       <div className="panel p-6">
         {loading ? (

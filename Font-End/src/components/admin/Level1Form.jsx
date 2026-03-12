@@ -25,7 +25,7 @@ export default function Level1Form({ initialData, onSubmit, onCancel, loading })
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Category Name *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Category Name *</label>
         <input
           type="text"
           className="input-field"
@@ -38,7 +38,7 @@ export default function Level1Form({ initialData, onSubmit, onCancel, loading })
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Font Awesome Icon *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Font Awesome Icon *</label>
         <input
           type="text"
           className="input-field font-mono text-xs"
@@ -47,11 +47,11 @@ export default function Level1Form({ initialData, onSubmit, onCancel, loading })
           placeholder="fa-brands fa-adn"
           required
         />
-        <p className="text-xs text-slate-500 mt-1">Use official Font Awesome class names (e.g. fa-solid fa-book). Leave blank for default folder icon.</p>
+        <p className="text-xs text-steel-500 mt-1">Use official Font Awesome class names (e.g. fa-solid fa-book). Leave blank for default folder icon.</p>
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
         <input
           type="number"
           className="input-field"

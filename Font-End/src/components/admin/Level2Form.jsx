@@ -28,7 +28,7 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Level 1 Category *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Level 1 Category *</label>
         <select
           className="input-field"
           value={level1Id}
@@ -43,7 +43,7 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Sub-category Name *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Sub-category Name *</label>
         <input
           type="text"
           className="input-field"
@@ -56,7 +56,7 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Font Awesome Icon *</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Font Awesome Icon *</label>
         <input
           type="text"
           className="input-field font-mono text-xs"
@@ -68,7 +68,7 @@ export default function Level2Form({ initialData, level1Options, onSubmit, onCan
       </div>
 
       <div>
-        <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Sort Order</label>
         <input
           type="number"
           className="input-field"

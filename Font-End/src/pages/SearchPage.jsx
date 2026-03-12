@@ -51,7 +51,7 @@ export default function SearchPage() {
   return (
     <PublicLayout>
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors mb-6">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-steel-500 hover:text-brand transition-colors mb-6">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -61,7 +61,7 @@ export default function SearchPage() {
         {/* Search form */}
         <form onSubmit={handleSubmit} className="mb-8">
           <div className="relative">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-steel-400"
               fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -84,12 +84,12 @@ export default function SearchPage() {
 
         {/* Meta */}
         {results && !loading && (
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
-            <div className="text-sm text-slate-400">
-              <span className="text-slate-100 font-semibold">{results.totalResults}</span> results for{' '}
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100/70">
+            <div className="text-sm text-steel-500">
+              <span className="text-brand-ink font-semibold">{results.totalResults}</span> results for{' '}
               <span className="text-accent-400 font-mono">"{results.query}"</span>
             </div>
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
+            <div className="flex items-center gap-2 text-xs font-mono text-steel-500">
               {results.usedFullText ? (
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">FTS</span>
               ) : (
@@ -117,8 +117,8 @@ export default function SearchPage() {
         {results && !loading && results.results.length === 0 && (
           <div className="text-center py-16">
             <div className="text-4xl mb-4">🔍</div>
-            <h3 className="font-display font-semibold text-slate-300 mb-2">No results found</h3>
-            <p className="text-slate-500 text-sm">Try different keywords or browse the menu on the left.</p>
+            <h3 className="font-display font-semibold text-steel-400/90 mb-2">No results found</h3>
+            <p className="text-steel-500 text-sm">Try different keywords or browse the menu on the left.</p>
           </div>
         )}
 
@@ -129,21 +129,22 @@ export default function SearchPage() {
               <Link
                 key={item.id}
                 to={`/knowledge/${item.id}`}
-                className="block panel p-5 hover:border-white/30 hover:bg-white/10 transition-all group"
+                className="block panel p-5 hover:border-brand/30 hover:bg-brand-soft/70 transition-all duration-200 group hover:-translate-y-0.5"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-xs font-mono text-slate-600 tabular-nums">#{i + 1}</span>
+                      <span className="text-xs font-mono text-steel-500 tabular-nums">#{i + 1}</span>
                       <span className={item.displayMode === 'PDF' ? 'badge-pdf' : 'badge-page'}>
                         {item.displayMode}
                       </span>
                     </div>
-                    <h3 className="font-display font-semibold text-slate-100 group-hover:text-accent-300 transition-colors mb-2 leading-snug">
+                    <h3 className="font-display font-semibold text-brand-ink group-hover:text-brand  transition-colors mb-2 leading-snug text-transparent bg-clip-text bg-gradient-to-r from-accent-400 to-navy-300">
+                    {/* <h3 className="font-display font-semibold text-brand-ink group-hover:text-brand  transition-colors mb-2 leading-snug"> */}
                       {item.title}
                     </h3>
                     {item.snippet && (
-                      <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-steel-500/90 line-clamp-2 leading-relaxed">
                         {item.snippet}
                       </p>
                     )}
@@ -152,8 +153,8 @@ export default function SearchPage() {
                   {/* Rank indicator */}
                   {item.rank > 0 && (
                     <div className="flex-shrink-0 flex flex-col items-end gap-1 min-w-[60px]">
-                      <span className="text-xs font-mono text-slate-500">rank</span>
-                      <div className="w-full h-1.5 bg-steel-800 rounded-full overflow-hidden">
+                      <span className="text-xs font-mono text-steel-500">rank</span>
+                      <div className="w-full h-1.5 bg-slate-200/60 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-accent-500 rounded-full transition-all"
                           style={{ width: `${Math.round((item.rank / maxRank) * 100)}%` }}
@@ -164,11 +165,11 @@ export default function SearchPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/12">
-                  <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100">
+                  <svg className="w-3.5 h-3.5 text-steel-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-xs text-slate-500 font-mono">
+                  <span className="text-xs text-steel-500 font-mono">
                     {new Date(item.updatedAt).toLocaleDateString('th-TH')}
                   </span>
                   <span className="ml-auto text-xs text-accent-500/60 group-hover:text-accent-400 transition-colors font-mono">
@@ -186,7 +187,7 @@ export default function SearchPage() {
             <svg className="w-12 h-12 text-steel-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <p className="text-slate-500">Enter a search term to get started</p>
+            <p className="text-steel-500">Enter a search term to get started</p>
           </div>
         )}
       </div>

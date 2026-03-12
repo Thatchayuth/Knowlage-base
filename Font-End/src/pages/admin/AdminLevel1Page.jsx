@@ -55,8 +55,8 @@ export default function AdminLevel1Page() {
     <div className="max-w-5xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display font-bold text-2xl text-slate-100">Level 1 Categories</h1>
-          <p className="text-slate-500 text-sm mt-1">Top-level knowledge categories</p>
+          <h1 className="font-display font-bold text-2xl text-brand-ink">Level 1 Categories</h1>
+          <p className="text-steel-500 text-sm mt-1">Top-level knowledge categories</p>
         </div>
         <button className="btn-primary" onClick={openCreate}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,17 +71,17 @@ export default function AdminLevel1Page() {
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : items.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-slate-500 text-sm">No categories yet.</p>
+            <p className="text-steel-500 text-sm">No categories yet.</p>
             <button className="btn-primary mt-4" onClick={openCreate}>Create first category</button>
           </div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left px-5 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Name</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Sort</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Sub-cats</th>
-                <th className="text-center px-4 py-3 text-xs font-mono text-slate-500 uppercase tracking-wider">Docs</th>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-5 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Name</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Sort</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Sub-cats</th>
+                <th className="text-center px-4 py-3 text-xs font-mono text-steel-500 uppercase tracking-wider">Docs</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -95,12 +95,12 @@ export default function AdminLevel1Page() {
                           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
                       </div>
-                      <span className="font-medium text-slate-200">{item.name}</span>
+                      <span className="font-medium text-brand-ink">{item.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center text-xs font-mono text-slate-500">{item.sortOrder}</td>
-                  <td className="px-4 py-3 text-center text-xs tabular-nums text-slate-400">{item.l2Count}</td>
-                  <td className="px-4 py-3 text-center text-xs tabular-nums text-slate-400">{item.docCount}</td>
+                  <td className="px-4 py-3 text-center text-xs font-mono text-steel-500">{item.sortOrder}</td>
+                  <td className="px-4 py-3 text-center text-xs tabular-nums text-steel-400">{item.l2Count}</td>
+                  <td className="px-4 py-3 text-center text-xs tabular-nums text-steel-400">{item.docCount}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button className="btn-ghost py-1 px-2 text-xs" onClick={() => openEdit(item)}>Edit</button>
