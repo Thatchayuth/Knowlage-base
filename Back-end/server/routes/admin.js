@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const { body, param } = require('express-validator');
 const { authenticateAD, authorizeGroup } = require('../middlewares/auth');
+const uploadFile = require('../middlewares/upload');
 const admin = require('../controllers/adminController');
 
 // All admin routes require AD auth + admin-dt group
@@ -56,8 +57,8 @@ const knowledgeValidation = [
     body('sortOrder').optional().isInt({ min: 0 }).toInt(),
 ];
 
-router.post('/knowledge', knowledgeValidation, admin.createKnowledge);
-router.put('/knowledge/:id', [param('id').isInt({ min: 1 }).toInt(), ...knowledgeValidation], admin.updateKnowledge);
+router.post('/knowledge', uploadFile.single('uploadFile'), knowledgeValidation, admin.createKnowledge);
+router.put('/knowledge/:id', uploadFile.single('uploadFile'), [param('id').isInt({ min: 1 }).toInt(), ...knowledgeValidation], admin.updateKnowledge);
 router.delete('/knowledge/:id', param('id').isInt({ min: 1 }).toInt(), admin.deleteKnowledge);
 
 module.exports = router;

@@ -48,6 +48,22 @@ export const adminDeleteLevel2  = (id)       => api.delete(`/api/admin/level2/${
 export const adminToggleLevel2  = (id)       => api.patch(`/api/admin/level2/${id}/toggle`).then(r => r.data.data)
 
 // ─── Admin: Knowledge ─────────────────────────────────────────
-export const adminCreateKnowledge = (data)     => api.post('/api/admin/knowledge', data).then(r => r.data.data)
-export const adminUpdateKnowledge = (id, data) => api.put(`/api/admin/knowledge/${id}`, data).then(r => r.data.data)
+export const adminCreateKnowledge = (data) => {
+  if (data instanceof FormData) {
+    return api.post('/api/admin/knowledge', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data.data)
+  }
+
+  return api.post('/api/admin/knowledge', data).then(r => r.data.data)
+}
+export const adminUpdateKnowledge = (id, data) => {
+  if (data instanceof FormData) {
+    return api.put(`/api/admin/knowledge/${id}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data.data)
+  }
+
+  return api.put(`/api/admin/knowledge/${id}`, data).then(r => r.data.data)
+}
 export const adminDeleteKnowledge = (id)       => api.delete(`/api/admin/knowledge/${id}`).then(r => r.data)

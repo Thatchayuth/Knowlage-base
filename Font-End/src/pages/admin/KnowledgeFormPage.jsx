@@ -79,10 +79,58 @@ export default function KnowledgeFormPage() {
     setSaving(true)
     try {
       if (isEdit) {
-        await adminUpdateKnowledge(id, data)
+        if (data.uploadFile) {
+          const formData = new FormData()
+          formData.append('level1Id', String(data.level1Id))
+          if (data.level2Id !== null && data.level2Id !== undefined) {
+            formData.append('level2Id', String(data.level2Id))
+          }
+          formData.append('title', data.title)
+          formData.append('displayMode', data.displayMode)
+          if (data.contentHtml !== null && data.contentHtml !== undefined) {
+            formData.append('contentHtml', data.contentHtml)
+          }
+          if (data.pdfUrl) {
+            formData.append('pdfUrl', data.pdfUrl)
+          }
+          if (data.videoUrl) {
+            formData.append('videoUrl', data.videoUrl)
+          }
+          formData.append('highlight', String(Boolean(data.highlight)))
+          formData.append('sortOrder', String(data.sortOrder ?? 0))
+          formData.append('uploadFile', data.uploadFile)
+          await adminUpdateKnowledge(id, formData)
+        } else {
+          await adminUpdateKnowledge(id, data)
+        }
         toast({ message: 'Knowledge item updated', type: 'success' })
+        window.location.reload()
+        return
       } else {
-        await adminCreateKnowledge(data)
+        if (data.uploadFile) {
+          const formData = new FormData()
+          formData.append('level1Id', String(data.level1Id))
+          if (data.level2Id !== null && data.level2Id !== undefined) {
+            formData.append('level2Id', String(data.level2Id))
+          }
+          formData.append('title', data.title)
+          formData.append('displayMode', data.displayMode)
+          if (data.contentHtml !== null && data.contentHtml !== undefined) {
+            formData.append('contentHtml', data.contentHtml)
+          }
+          if (data.pdfUrl) {
+            formData.append('pdfUrl', data.pdfUrl)
+          }
+          if (data.videoUrl) {
+            formData.append('videoUrl', data.videoUrl)
+          }
+          formData.append('highlight', String(Boolean(data.highlight)))
+          formData.append('sortOrder', String(data.sortOrder ?? 0))
+          formData.append('uploadFile', data.uploadFile)
+          await adminCreateKnowledge(formData)
+        } else {
+          await adminCreateKnowledge(data)
+        }
         toast({ message: 'Knowledge item created', type: 'success' })
       }
       navigate('/administrator/knowledge')

@@ -1,5 +1,6 @@
 'use strict';
 
+const path = require('path');
 const { sql, getPool } = require('../config/database');
 const logger = require('../services/logger');
 const { validatePdfDomain } = require('../middlewares/pdfValidator');
@@ -266,7 +267,25 @@ async function toggleLevel2(req, res, next) {
 async function createKnowledge(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
-    const { level1Id, level2Id, title, displayMode, contentHtml, pdfUrl, videoUrl, highlight, sortOrder } = req.body;
+    const { level1Id, level2Id, title, displayMode, contentHtml, highlight, sortOrder } = req.body;
+    let { pdfUrl, videoUrl } = req.body;
+
+    if (req.file) {
+        const ext = path.extname(req.file.originalname || '').toLowerCase();
+        const baseUrl = String(process.env.BASE_URL || '').trim().replace(/\/+$/, '');
+
+        if (!baseUrl) {
+            return res.status(500).json({ error: 'BASE_URL is not configured', code: 'MISSING_BASE_URL' });
+        }
+
+        if (ext === '.mp4') {
+            videoUrl = `${baseUrl}/${req.file.filename}`;
+        } else if (ext === '.pdf') {
+            pdfUrl = `${baseUrl}/${req.file.filename}`;
+        } else {
+            return res.status(400).json({ error: 'Only .mp4 and .pdf files are supported', code: 'INVALID_FILE_TYPE' });
+        }
+    }
 
     // Validate PDF domain
     if (pdfUrl) {
@@ -315,7 +334,26 @@ async function updateKnowledge(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
     const id = parseInt(req.params.id, 10);
-    const { level1Id, level2Id, title, displayMode, contentHtml, pdfUrl, videoUrl, highlight, sortOrder } = req.body;
+    const { level1Id, level2Id, title, displayMode, contentHtml, highlight, sortOrder } = req.body;
+    let { pdfUrl, videoUrl } = req.body;
+
+    if (req.file) {
+        const ext = path.extname(req.file.originalname || '').toLowerCase();
+        const baseUrl = String(process.env.BASE_URL || '').trim().replace(/\/+$/, '');
+        const uploadedFileName = req.file.filename;
+
+        if (!baseUrl) {
+            return res.status(500).json({ error: 'BASE_URL is not configured', code: 'MISSING_BASE_URL' });
+        }
+
+        if (ext === '.mp4') {
+            videoUrl = `${baseUrl}/${uploadedFileName}`;
+        } else if (ext === '.pdf') {
+            pdfUrl = `${baseUrl}/${uploadedFileName}`;
+        } else {
+            return res.status(400).json({ error: 'Only .mp4 and .pdf files are supported', code: 'INVALID_FILE_TYPE' });
+        }
+    }
 
     if (pdfUrl) {
         const v = validatePdfDomain(pdfUrl);

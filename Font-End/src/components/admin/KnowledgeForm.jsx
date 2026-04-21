@@ -9,6 +9,8 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
   const [contentHtml, setContentHtml] = useState(initialData?.contentHtml || '')
   const [pdfUrl, setPdfUrl] = useState(initialData?.pdfUrl || '')
   const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '')
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploadFileError, setUploadFileError] = useState('')
   const [sortOrder, setSortOrder] = useState(initialData?.sortOrder ?? 0)
   const [highlight, setHighlight] = useState(initialData?.highlight || false)
 
@@ -20,6 +22,8 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     setContentHtml(initialData?.contentHtml || '')
     setPdfUrl(initialData?.pdfUrl || '')
     setVideoUrl(initialData?.videoUrl || '')
+    setUploadFile(null)
+    setUploadFileError('')
     setSortOrder(initialData?.sortOrder ?? 0)
     setHighlight(Boolean(initialData?.highlight))
   }, [initialData])
@@ -39,6 +43,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     e.preventDefault()
     if (!title.trim() || !level1Id) return
     if (displayMode === 'PAGE' && !contentHtml.trim()) return
+    if (uploadFileError) return
 
     onSubmit({
       level1Id: parseInt(level1Id, 10),
@@ -48,6 +53,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       contentHtml: displayMode === 'PAGE' ? contentHtml : null,
       pdfUrl: pdfUrl.trim() || null,
       videoUrl: videoUrl.trim() || null,
+      uploadFile,
       highlight,
       sortOrder: parseInt(sortOrder, 10) || 0,
     })
@@ -120,8 +126,39 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       </div>
 
       <div>
+        <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Upload Files</label>
+        <input
+          type="file"
+          name="uploadFile"
+          className="input-field"
+          onChange={e => {
+            const file = e.target.files?.[0] || null
+            setUploadFile(file)
+            if (file) {
+              const ext = file.name.split('.').pop().toLowerCase()
+              if (ext !== 'pdf' && ext !== 'mp4') {
+                setUploadFileError(`ไฟล์ "${file.name}" ไม่รองรับ — รองรับเฉพาะ .pdf และ .mp4 เท่านั้น`)
+              } else {
+                setUploadFileError('')
+              }
+            } else {
+              setUploadFileError('')
+            }
+          }}
+        />
+        {uploadFileError && (
+          <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {uploadFileError}
+          </p>
+        )}
+      </div>
+
+      <div>
         <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">
-          PDF URL {displayMode === 'PDF' ? '*' : '(optional)'}
+          PDF URL {displayMode === 'PDF' && !uploadFile ? '*' : '(optional)'}
         </label>
         <input
           type="url"
@@ -129,7 +166,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
           value={pdfUrl}
           onChange={e => setPdfUrl(e.target.value)}
           placeholder="http://fileserver.internal/docs/file.pdf"
-          required={displayMode === 'PDF'}
+          required={displayMode === 'PDF' && !uploadFile}
         />
         <p className="text-xs text-steel-600 mt-1">Must be on an approved internal domain.</p>
       </div>
@@ -191,7 +228,8 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
             loading ||
             !title.trim() ||
             !level1Id ||
-            (displayMode === 'PAGE' && !contentHtml.trim())
+            (displayMode === 'PAGE' && !contentHtml.trim()) ||
+            !!uploadFileError
           }
         >
           {loading ? <Spinner size="sm" /> : null}
