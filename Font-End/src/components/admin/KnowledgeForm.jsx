@@ -9,6 +9,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
   const [contentHtml, setContentHtml] = useState(initialData?.contentHtml || '')
   const [pdfUrl, setPdfUrl] = useState(initialData?.pdfUrl || '')
   const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '')
+  const [externalUrl, setExternalUrl] = useState(initialData?.externalUrl || '')
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadFileError, setUploadFileError] = useState('')
   const [sortOrder, setSortOrder] = useState(initialData?.sortOrder ?? 0)
@@ -22,6 +23,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     setContentHtml(initialData?.contentHtml || '')
     setPdfUrl(initialData?.pdfUrl || '')
     setVideoUrl(initialData?.videoUrl || '')
+    setExternalUrl(initialData?.externalUrl || '')
     setUploadFile(null)
     setUploadFileError('')
     setSortOrder(initialData?.sortOrder ?? 0)
@@ -43,6 +45,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
     e.preventDefault()
     if (!title.trim() || !level1Id) return
     if (displayMode === 'PAGE' && !contentHtml.trim()) return
+    if (displayMode === 'LINK' && !externalUrl.trim()) return
     if (uploadFileError) return
 
     onSubmit({
@@ -53,6 +56,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       contentHtml: displayMode === 'PAGE' ? contentHtml : null,
       pdfUrl: pdfUrl.trim() || null,
       videoUrl: videoUrl.trim() || null,
+      externalUrl: externalUrl.trim() || null,
       uploadFile,
       highlight,
       sortOrder: parseInt(sortOrder, 10) || 0,
@@ -106,7 +110,7 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
       <div>
         <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">Display Mode *</label>
         <div className="flex gap-3">
-          {['PAGE', 'PDF'].map(mode => (
+          {['PAGE', 'PDF', 'LINK'].map(mode => (
             <button
               key={mode}
               type="button"
@@ -115,6 +119,8 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
                 displayMode === mode
                   ? mode === 'PDF'
                     ? 'bg-orange-500/15 border-orange-500/40 text-orange-400'
+                    : mode === 'LINK'
+                    ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
                     : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
                   : 'bg-steel-800 border-white/15 text-steel-500 hover:text-steel-300'
               }`}
@@ -182,6 +188,26 @@ export default function KnowledgeForm({ initialData, level1List, onSubmit, onCan
         />
         <p className="text-xs text-steel-600 mt-1">Supports direct MP4 links or embeddable URLs (YouTube, etc.).</p>
       </div>
+
+      {/* External URL — เฉพาะ LINK mode */}
+      {displayMode === 'LINK' && (
+        <div>
+          <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">
+            External URL *
+          </label>
+          <input
+            type="url"
+            className="input-field font-mono text-sm border-sky-500/40 focus:border-sky-400"
+            value={externalUrl}
+            onChange={e => setExternalUrl(e.target.value)}
+            placeholder="https://example.com/page"
+            required
+          />
+          <p className="text-xs text-sky-500/70 mt-1">
+            เมื่อผู้ใช้คลิก item นี้จะเปิดลิงก์ภายนอกใน tab ใหม่โดยตรง
+          </p>
+        </div>
+      )}
 
       {displayMode === 'PAGE' && (
         <div>

@@ -6,14 +6,14 @@
 USE master;
 GO
 
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'KnowledgeDB')
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'Celle')
 BEGIN
-    CREATE DATABASE KnowledgeDB
+    CREATE DATABASE Celle
     COLLATE Thai_CI_AS;
 END
 GO
 
-USE KnowledgeDB;
+USE Celle;
 GO
 
 -- ============================================================

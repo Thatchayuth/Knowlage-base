@@ -268,33 +268,26 @@ async function createKnowledge(req, res, next) {
     if (_validateRequest(req, res)) return;
     const start = Date.now();
     const { level1Id, level2Id, title, displayMode, contentHtml, highlight, sortOrder } = req.body;
-    let { pdfUrl, videoUrl } = req.body;
+    let { pdfUrl, videoUrl, externalUrl } = req.body;
 
     if (req.file) {
         const ext = path.extname(req.file.originalname || '').toLowerCase();
         const baseUrl = String(process.env.BASE_URL || '').trim().replace(/\/+$/, '');
-
-        if (!baseUrl) {
-            return res.status(500).json({ error: 'BASE_URL is not configured', code: 'MISSING_BASE_URL' });
-        }
-
-        if (ext === '.mp4') {
-            videoUrl = `${baseUrl}/${req.file.filename}`;
-        } else if (ext === '.pdf') {
-            pdfUrl = `${baseUrl}/${req.file.filename}`;
-        } else {
-            return res.status(400).json({ error: 'Only .mp4 and .pdf files are supported', code: 'INVALID_FILE_TYPE' });
-        }
+        if (!baseUrl) return res.status(500).json({ error: 'BASE_URL is not configured', code: 'MISSING_BASE_URL' });
+        if (ext === '.mp4') videoUrl = `${baseUrl}/${req.file.filename}`;
+        else if (ext === '.pdf') pdfUrl = `${baseUrl}/${req.file.filename}`;
+        else return res.status(400).json({ error: 'Only .mp4 and .pdf files are supported', code: 'INVALID_FILE_TYPE' });
     }
 
-    // Validate PDF domain
     if (pdfUrl) {
         const v = validatePdfDomain(pdfUrl);
         if (!v.valid) return res.status(400).json({ error: `Invalid PDF URL: ${v.reason}`, code: 'INVALID_PDF_URL' });
     }
-
     if (displayMode === 'PAGE' && !contentHtml) {
         return res.status(400).json({ error: 'contentHtml is required for PAGE mode', code: 'MISSING_CONTENT' });
+    }
+    if (displayMode === 'LINK' && !externalUrl) {
+        return res.status(400).json({ error: 'externalUrl is required for LINK mode', code: 'MISSING_EXTERNAL_URL' });
     }
 
     try {
@@ -307,14 +300,15 @@ async function createKnowledge(req, res, next) {
             .input('ContentHtml', sql.NVarChar(sql.MAX), contentHtml || null)
             .input('PdfUrl',      sql.NVarChar(1000), pdfUrl || null)
             .input('VideoUrl',    sql.NVarChar(1000), videoUrl || null)
+            .input('ExternalUrl', sql.NVarChar(2000), externalUrl || null)
             .input('Highlight',   sql.Bit, highlight ? 1 : 0)
             .input('SortOrder',   sql.Int, sortOrder ?? 0)
             .input('CreatedBy',   sql.NVarChar(100), req.user.username)
             .query(`
                 INSERT INTO dbo.KnowledgeItems
-                    (Level1Id, Level2Id, Title, DisplayMode, ContentHtml, PdfUrl, VideoUrl, Highlight, SortOrder, CreatedBy)
+                    (Level1Id, Level2Id, Title, DisplayMode, ContentHtml, PdfUrl, VideoUrl, ExternalUrl, Highlight, SortOrder, CreatedBy)
                 OUTPUT INSERTED.Id, INSERTED.Title, INSERTED.DisplayMode, INSERTED.CreatedAt
-                VALUES (@Level1Id, @Level2Id, @Title, @DisplayMode, @ContentHtml, @PdfUrl, @VideoUrl, @Highlight, @SortOrder, @CreatedBy)
+                VALUES (@Level1Id, @Level2Id, @Title, @DisplayMode, @ContentHtml, @PdfUrl, @VideoUrl, @ExternalUrl, @Highlight, @SortOrder, @CreatedBy)
             `);
 
         const row = result.recordset[0];
@@ -325,8 +319,12 @@ async function createKnowledge(req, res, next) {
         });
         return res.status(201).json({ data: row });
     } catch (err) {
-        if (err.number === 547) return res.status(400).json({ error: 'Invalid Level1Id or Level2Id', code: 'INVALID_FK' });
-        next(err);
+        if (err.number === 547) {
+            const msg = err.message || ''
+            if (msg.includes('CHK_')) return res.status(400).json({ error: 'Data violates a check constraint. Please verify DisplayMode and required fields.', code: 'CHECK_VIOLATION' })
+            return res.status(400).json({ error: 'Invalid Level1Id or Level2Id', code: 'INVALID_FK' })
+        }
+        next(err)
     }
 }
 
@@ -335,33 +333,27 @@ async function updateKnowledge(req, res, next) {
     const start = Date.now();
     const id = parseInt(req.params.id, 10);
     const { level1Id, level2Id, title, displayMode, contentHtml, highlight, sortOrder } = req.body;
-    let { pdfUrl, videoUrl } = req.body;
+    let { pdfUrl, videoUrl, externalUrl } = req.body;
 
     if (req.file) {
         const ext = path.extname(req.file.originalname || '').toLowerCase();
         const baseUrl = String(process.env.BASE_URL || '').trim().replace(/\/+$/, '');
         const uploadedFileName = req.file.filename;
-
-        if (!baseUrl) {
-            return res.status(500).json({ error: 'BASE_URL is not configured', code: 'MISSING_BASE_URL' });
-        }
-
-        if (ext === '.mp4') {
-            videoUrl = `${baseUrl}/${uploadedFileName}`;
-        } else if (ext === '.pdf') {
-            pdfUrl = `${baseUrl}/${uploadedFileName}`;
-        } else {
-            return res.status(400).json({ error: 'Only .mp4 and .pdf files are supported', code: 'INVALID_FILE_TYPE' });
-        }
+        if (!baseUrl) return res.status(500).json({ error: 'BASE_URL is not configured', code: 'MISSING_BASE_URL' });
+        if (ext === '.mp4') videoUrl = `${baseUrl}/${uploadedFileName}`;
+        else if (ext === '.pdf') pdfUrl = `${baseUrl}/${uploadedFileName}`;
+        else return res.status(400).json({ error: 'Only .mp4 and .pdf files are supported', code: 'INVALID_FILE_TYPE' });
     }
 
     if (pdfUrl) {
         const v = validatePdfDomain(pdfUrl);
         if (!v.valid) return res.status(400).json({ error: `Invalid PDF URL: ${v.reason}`, code: 'INVALID_PDF_URL' });
     }
-
     if (displayMode === 'PAGE' && !contentHtml) {
         return res.status(400).json({ error: 'contentHtml is required for PAGE mode', code: 'MISSING_CONTENT' });
+    }
+    if (displayMode === 'LINK' && !externalUrl) {
+        return res.status(400).json({ error: 'externalUrl is required for LINK mode', code: 'MISSING_EXTERNAL_URL' });
     }
 
     try {
@@ -375,13 +367,15 @@ async function updateKnowledge(req, res, next) {
             .input('ContentHtml', sql.NVarChar(sql.MAX), contentHtml || null)
             .input('PdfUrl',      sql.NVarChar(1000), pdfUrl || null)
             .input('VideoUrl',    sql.NVarChar(1000), videoUrl || null)
+            .input('ExternalUrl', sql.NVarChar(2000), externalUrl || null)
             .input('Highlight',   sql.Bit, highlight ? 1 : 0)
             .input('SortOrder',   sql.Int, sortOrder ?? 0)
             .input('UpdatedBy',   sql.NVarChar(100), req.user.username)
             .query(`
                 UPDATE dbo.KnowledgeItems
                 SET Level1Id = @Level1Id, Level2Id = @Level2Id, Title = @Title,
-                    DisplayMode = @DisplayMode, ContentHtml = @ContentHtml, PdfUrl = @PdfUrl, VideoUrl = @VideoUrl,
+                    DisplayMode = @DisplayMode, ContentHtml = @ContentHtml, PdfUrl = @PdfUrl,
+                    VideoUrl = @VideoUrl, ExternalUrl = @ExternalUrl,
                     Highlight = @Highlight,
                     SortOrder = @SortOrder, UpdatedBy = @UpdatedBy, UpdatedAt = SYSDATETIME()
                 OUTPUT INSERTED.Id, INSERTED.Title, INSERTED.DisplayMode, INSERTED.UpdatedAt

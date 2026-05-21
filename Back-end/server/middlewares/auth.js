@@ -3,10 +3,51 @@
 const { authenticateUser, isInGroup } = require('../services/ldapService');
 const logger = require('../services/logger');
 const ldapConfig = require('../config/ldap');
+const crypto = require('crypto');
+const syncUserRepo = require('../repositories/syncUser.repository');
+
+// ============================================================
+// Auth result cache — avoids LDAP round-trip on every request.
+// TTL: 5 minutes per user:password combination.
+// ============================================================
+const AUTH_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const _authCache = new Map();
+
+function _cacheKey(username, password) {
+    const hash = crypto.createHash('sha256').update(password).digest('hex');
+    return `${username.toLowerCase()}:${hash}`;
+}
+
+function _getCached(username, password) {
+    const key = _cacheKey(username, password);
+    const entry = _authCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) { _authCache.delete(key); return null; }
+    return entry.user;
+}
+
+function _setCache(username, password, user) {
+    // Prevent unbounded growth (max 500 entries)
+    if (_authCache.size >= 500) {
+        const firstKey = _authCache.keys().next().value;
+        _authCache.delete(firstKey);
+    }
+    const key = _cacheKey(username, password);
+    _authCache.set(key, { user, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
+}
+
+// Called externally to invalidate cache on password change / logout
+function invalidateAuthCache(username) {
+    const lower = (username || '').toLowerCase();
+    for (const key of _authCache.keys()) {
+        if (key.startsWith(`${lower}:`)) _authCache.delete(key);
+    }
+}
 
 // ============================================================
 // authenticateAD()
 // Reads Basic Auth header, validates against AD, attaches user to req
+// Cache hit → no LDAP call; cache miss → LDAP bind → cache result
 // ============================================================
 async function authenticateAD(req, res, next) {
    
@@ -35,16 +76,33 @@ async function authenticateAD(req, res, next) {
         return res.status(401).json({ error: 'Username and password required', code: 'EMPTY_CREDS' });
     }
 
+    // ── Cache lookup ────────────────────────────────────────
+    const cached = _getCached(username, password);
+    if (cached) {
+        req.user = cached;
+        return next();
+    }
+
     try {
         const user = await authenticateUser(username, password);
         const executionTimeMs = Date.now() - startTime;
 
         // Determine role
-        console.log(`User groups: ${user.groups.join(', ')}`);
         const isAdmin = isInGroup(user.groups, ldapConfig.adminGroup);
-        user.role = isAdmin ? 'admin' : 'readonly';
+        if (isAdmin) {
+            user.role = 'admin';
+        } else {
+            // ตรวจสอบว่าเป็น Sync User รายบุคคล (เก็บใน DB) หรือไม่
+            const syncRecord = await syncUserRepo.getByUsername(user.username).catch(() => null);
+            user.role = syncRecord ? 'syncuser' : 'readonly';
+        }
+
+        // Cache successful auth result
+        _setCache(username, password, user);
 
         req.user = user;
+
+        console.log(`[LOGIN] User: ${user.username} | Role: ${user.role} | AD Groups: ${(user.groups || []).join(', ')}`);
 
         logger.logEvent('LOGIN_SUCCESS', {
             username:       user.username,
@@ -191,4 +249,4 @@ async function authenticateADother(req, res) {
     }
 }
 
-module.exports = { authenticateAD, authorizeGroup, requireAuth , authenticateADother};
+module.exports = { authenticateAD, authorizeGroup, requireAuth, authenticateADother, invalidateAuthCache };

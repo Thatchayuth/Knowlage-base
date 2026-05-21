@@ -17,10 +17,10 @@ export default function AdminLoginPage() {
   const [error, setError] = useState(null)
   const [showPass, setShowPass] = useState(false)
 
-  const from = location.state?.from?.pathname || '/administrator'
+  const from = location.state?.from?.pathname || '/'
 
   useEffect(() => {
-    if (!authLoading && user?.role === 'admin') {
+    if (!authLoading && user) {
       navigate(from, { replace: true })
     }
   }, [user, authLoading, navigate, from])
@@ -35,13 +35,8 @@ export default function AdminLoginPage() {
       const u = await login(username.trim(), password)
       setUser(u)
 
-      if (u.role !== 'admin') {
-        toast({ message: 'Access denied: admin role required', type: 'warning' })
-        navigate('/')
-        return
-      }
-
       toast({ message: `Welcome, ${u.username}`, type: 'success' })
+
       navigate(from, { replace: true })
     } catch (err) {
       const msg = err.response?.data?.error || 'Invalid username or password'
@@ -73,7 +68,7 @@ export default function AdminLoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
-          <h1 className="font-display font-bold text-2xl text-brand-ink">Administrator</h1>
+          <h1 className="font-display font-bold text-2xl text-brand-ink">Sign In</h1>
           <p className="text-steel-500 text-sm mt-1">Sign in with your domain credentials</p>
         </div>
 

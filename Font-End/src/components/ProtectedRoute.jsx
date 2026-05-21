@@ -32,8 +32,15 @@ export default function ProtectedRoute({ children, requiredRole = 'admin' }) {
   }
 
   if (requiredRole === 'admin' && user.role !== 'admin') {
+    // syncuser ถูก redirect ไปหน้า /sync ของตัวเอง
+    if (user.role === 'syncuser') return <Navigate to="/sync" replace />
     return <Navigate to="/" replace />
   }
 
+  if (requiredRole === 'syncuser' && user.role !== 'syncuser' && user.role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
+
+  // requiredRole="user" → any logged-in user passes
   return children
 }

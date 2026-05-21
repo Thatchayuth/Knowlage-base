@@ -121,7 +121,7 @@
     border-radius: 1.35rem;
     border: 1px solid var(--border-soft);
     box-shadow: 0 15px 35px rgba(10, 24, 85, 0.18);
-    @apply font-semibold text-base;
+    @apply font-semibold text-sm;
   }
 
   .nav-item-hover {

@@ -1,9 +1,11 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMenu } from '../hooks/useMenu'
+import { useAuth } from '../context/AuthContext'
 import Spinner from '../components/ui/Spinner'
 import IconRenderer from '../components/ui/IconRenderer'
 import LogoNCR from '../img/NCR-logo-web.png'
+import PortalSidebarSection from '../components/portal/PortalSidebarSection'
 
 function MenuSkeleton() {
   return (
@@ -108,11 +110,24 @@ function MenuLevel2({ item, activeId }) {
 
 function MenuKnowledgeItem({ item, activeId }) {
   const isActive = String(activeId) === String(item.id)
-  const badges = []
-  // if (item.displayMode) badges.push(item.displayMode === 'PDF' ? 'Files' : 'Page')
-  // if (item.PdfUrl || item.pdfUrl) badges.push('PDF')
-  // if (item.VideoUrl || item.videoUrl) badges.push('VIDEO')
-  const uniqueBadges = [...new Set(badges)]
+
+  // LINK mode → เปิด external URL ใน tab ใหม่
+  if (item.displayMode === 'LINK' && item.externalUrl) {
+    return (
+      <a
+        href={item.externalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="nav-item nav-item-hover pl-4"
+      >
+        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-sky-500" />
+        <span className="truncate text-sm leading-snug flex-1">{item.title}</span>
+        <svg className="w-3 h-3 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
+    )
+  }
 
   return (
     <Link
@@ -121,22 +136,13 @@ function MenuKnowledgeItem({ item, activeId }) {
     >
       <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-accent-500' : 'bg-steel-600'}`} />
       <span className="truncate text-sm leading-snug flex-1">{item.title}</span>
-      <span className="flex items-center gap-1 text-[10px] font-mono">
-        {uniqueBadges.map(badge => (
-          <span
-            key={badge}
-            className={badge === 'Files' ? 'text-orange-400/80' : badge === 'Page' ? 'text-purple-300' : 'text-slate-500'}
-          >
-            {badge}
-          </span>
-        ))}
-      </span>
     </Link>
   )
 }
 
 export default function PublicLayout({ children }) {
   const { menu, loading, error } = useMenu()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
   const location = useLocation()
@@ -180,9 +186,9 @@ export default function PublicLayout({ children }) {
           />         
               <div className="leading-tight">
                 <div className="font-display font-bold text-slate-100 text-base tracking-wide group-hover:text-accent-300 transition-colors">
-                  I-FAQ Knowledge Base
+                  Cell-E Onsite Desktop
                 </div>
-                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-500 font-mono">Internal Portal</div>
+                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-500 font-mono">----</div>
               </div>
             </div>
           </Link>
@@ -211,6 +217,12 @@ export default function PublicLayout({ children }) {
 
         {/* Menu tree */}
         <div className="flex-1 overflow-y-auto py-3">
+          {/* Cell-E-File Portal section — above IFAQ */}
+          <div className="mb-2 border-b border-white/10 pb-2">
+            <PortalSidebarSection />
+          </div>
+
+          {/* IFAQ */}
           {loading && <MenuSkeleton />}
           {error && (
             <div className="p-4 text-sm text-red-400 font-mono">{error}</div>
@@ -224,17 +236,52 @@ export default function PublicLayout({ children }) {
         </div>
 
         {/* Footer links */}
-        <div className="flex-shrink-0 border-t border-white/30 px-4 py-3">
-          <Link
-            to="/administrator"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors font-mono"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Administrator
-          </Link>
+        <div className="flex-shrink-0 border-t border-white/30 px-4 py-3 space-y-1">
+          {/* แสดง Administrator link เฉพาะ admin */}
+          {user?.role === 'admin' && (
+            <Link
+              to="/administrator"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors font-mono"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Administrator
+            </Link>
+          )}
+
+          {/* แสดง Sync link เฉพาะ syncuser */}
+          {user?.role === 'syncuser' && (
+            <Link
+              to="/sync"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors font-mono"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Sync Drive
+            </Link>
+          )}
+
+          {/* User info + logout */}
+          {user && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5">
+              <div className="flex items-center gap-2 min-w-0">
+                <svg className="w-3.5 h-3.5 text-steel-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="text-xs text-white/60 font-mono truncate">{user.username}</span>
+              </div>
+              <button
+                onClick={() => { logout(); navigate('/admin-login') }}
+                className="text-xs text-white/40 hover:text-red-400 transition-colors font-mono flex-shrink-0 ml-2"
+                title="Sign out"
+              >
+                ออก
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 

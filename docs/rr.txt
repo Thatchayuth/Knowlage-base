@@ -1,0 +1,7 @@
+ขั้นตอนการเริ่มใช้งาน
+Run SQL: Back-end/SQL/portal.schema.sql ใน MSSQL
+Add .env: PORTAL_DRIVE_ROOT=D:\Shared
+Install deps (ไม่มี package ใหม่ — ใช้ dependencies เดิมทั้งหมด)
+Admin: ไปที่ /administrator/portal/sync → กด "Sync Now"
+Admin: ไปที่ /administrator/portal/permissions/:id → กำหนด AD Group
+User: เปิด /portal → เห็นโฟลเดอร์ตาม AD Group permissions โดยอัตโนมัติ

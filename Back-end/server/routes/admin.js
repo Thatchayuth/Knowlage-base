@@ -5,6 +5,7 @@ const { body, param } = require('express-validator');
 const { authenticateAD, authorizeGroup } = require('../middlewares/auth');
 const uploadFile = require('../middlewares/upload');
 const admin = require('../controllers/adminController');
+const { updateSettings } = require('../controllers/settingsController');
 
 // All admin routes require AD auth + admin-dt group
 router.use(authenticateAD);
@@ -49,10 +50,11 @@ const knowledgeValidation = [
     body('level1Id').isInt({ min: 1 }).toInt(),
     body('level2Id').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
     body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 500 }),
-    body('displayMode').isIn(['PDF', 'PAGE']).withMessage('displayMode must be PDF or PAGE'),
+    body('displayMode').isIn(['PDF', 'PAGE', 'LINK']).withMessage('displayMode must be PDF, PAGE or LINK'),
     body('contentHtml').optional({ nullable: true }).isString(),
     body('pdfUrl').optional({ nullable: true }).isURL({ require_tld: false }).isLength({ max: 1000 }),
     body('videoUrl').optional({ nullable: true }).isURL({ require_tld: false }).isLength({ max: 1000 }),
+    body('externalUrl').optional({ nullable: true }).isURL({ require_tld: false }).isLength({ max: 2000 }),
     body('highlight').optional().isBoolean().toBoolean(),
     body('sortOrder').optional().isInt({ min: 0 }).toInt(),
 ];
@@ -60,5 +62,14 @@ const knowledgeValidation = [
 router.post('/knowledge', uploadFile.single('uploadFile'), knowledgeValidation, admin.createKnowledge);
 router.put('/knowledge/:id', uploadFile.single('uploadFile'), [param('id').isInt({ min: 1 }).toInt(), ...knowledgeValidation], admin.updateKnowledge);
 router.delete('/knowledge/:id', param('id').isInt({ min: 1 }).toInt(), admin.deleteKnowledge);
+
+// ============================================================
+// SITE SETTINGS
+// ============================================================
+router.put('/settings', [
+    body('portal_title').trim().notEmpty().withMessage('portal_title is required').isLength({ max: 200 }),
+    body('portal_icon').optional({ nullable: true }).trim().matches(/^[a-z0-9 -]+$/).withMessage('portal_icon invalid').isLength({ max: 100 }),
+    body('portal_drive_root').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }).withMessage('portal_drive_root too long'),
+], updateSettings);
 
 module.exports = router;

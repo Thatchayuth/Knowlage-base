@@ -184,6 +184,33 @@ export default function KnowledgePage() {
               </>
             )}
 
+            {/* LINK display mode: ปุ่มเปิดเว็บไซต์ภายนอก */}
+            {item.DisplayMode === 'LINK' && item.ExternalUrl && (
+              <div className="panel p-8 mt-6 flex flex-col items-center text-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-brand-ink mb-1">{item.Title}</h3>
+                  <p className="text-sm text-steel-500">คลิกปุ่มด้านล่างเพื่อเปิดเว็บไซต์ภายนอกใน tab ใหม่</p>
+                  <p className="text-xs font-mono text-steel-600 mt-1 break-all">{item.ExternalUrl}</p>
+                </div>
+                <a
+                  href={item.ExternalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  เปิดเว็บไซต์
+                </a>
+              </div>
+            )}
+
             {/* Video block */}
             {videoEmbed && (
               <div className="panel p-5 mt-6">

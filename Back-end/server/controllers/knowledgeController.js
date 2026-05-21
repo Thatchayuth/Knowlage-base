@@ -35,7 +35,7 @@ async function getMenu(req, res, next) {
         // Fetch knowledge items - if Level2 is disabled, item shows directly under Level1
         const kiResult = await pool.request().query(`
             SELECT ki.Id, ki.Level1Id, ki.Level2Id, ki.Title, ki.DisplayMode, ki.SortOrder,
-                   ki.Highlight,
+                   ki.Highlight, ki.ExternalUrl,
                    COALESCE(l2.IsEnabled, 1) AS Level2IsEnabled
             FROM dbo.KnowledgeItems ki
             LEFT JOIN dbo.Categories_Level2 l2 ON ki.Level2Id = l2.Id AND l2.DeletedAt IS NULL
@@ -56,7 +56,7 @@ async function getMenu(req, res, next) {
         const l2KiMap = {};
         for (const ki of kiResult.recordset) {
             const level2Active = ki.Level2Id && Boolean(ki.Level2IsEnabled)
-            const mappedItem = { id: ki.Id, title: ki.Title, displayMode: ki.DisplayMode, highlight: Boolean(ki.Highlight) }
+            const mappedItem = { id: ki.Id, title: ki.Title, displayMode: ki.DisplayMode, highlight: Boolean(ki.Highlight), externalUrl: ki.ExternalUrl || null }
             if (level2Active) {
                 if (!l2KiMap[ki.Level2Id]) l2KiMap[ki.Level2Id] = [];
                 l2KiMap[ki.Level2Id].push(mappedItem);
@@ -108,7 +108,7 @@ async function getKnowledgeById(req, res, next) {
         const result = await pool.request()
             .input('Id', sql.Int, id)
             .query(`
-                SELECT ki.Id, ki.Title, ki.DisplayMode, ki.ContentHtml, ki.PdfUrl, ki.VideoUrl, ki.Highlight,
+                SELECT ki.Id, ki.Title, ki.DisplayMode, ki.ContentHtml, ki.PdfUrl, ki.VideoUrl, ki.ExternalUrl, ki.Highlight,
                        ki.Level1Id, l1.Name AS Level1Name,
                        ki.Level2Id, l2.Name AS Level2Name,
                        ki.ViewCount, ki.CreatedAt, ki.UpdatedAt

@@ -67,3 +67,7 @@ export const adminUpdateKnowledge = (id, data) => {
   return api.put(`/api/admin/knowledge/${id}`, data).then(r => r.data.data)
 }
 export const adminDeleteKnowledge = (id)       => api.delete(`/api/admin/knowledge/${id}`).then(r => r.data)
+
+// ─── Settings ─────────────────────────────────────────────────
+export const fetchSettings        = ()      => api.get('/api/settings').then(r => r.data.data)
+export const adminUpdateSettings  = (data)  => api.put('/api/admin/settings', data).then(r => r.data.data)

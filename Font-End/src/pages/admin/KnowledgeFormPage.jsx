@@ -61,6 +61,7 @@ export default function KnowledgeFormPage() {
           contentHtml: item.ContentHtml,
           pdfUrl: item.PdfUrl,
           videoUrl: item.VideoUrl,
+          externalUrl: item.ExternalUrl,
           highlight: Boolean(item.Highlight),
           sortOrder: item.SortOrder,
         })
@@ -96,6 +97,9 @@ export default function KnowledgeFormPage() {
           if (data.videoUrl) {
             formData.append('videoUrl', data.videoUrl)
           }
+          if (data.externalUrl) {
+            formData.append('externalUrl', data.externalUrl)
+          }
           formData.append('highlight', String(Boolean(data.highlight)))
           formData.append('sortOrder', String(data.sortOrder ?? 0))
           formData.append('uploadFile', data.uploadFile)
@@ -123,6 +127,9 @@ export default function KnowledgeFormPage() {
           }
           if (data.videoUrl) {
             formData.append('videoUrl', data.videoUrl)
+          }
+          if (data.externalUrl) {
+            formData.append('externalUrl', data.externalUrl)
           }
           formData.append('highlight', String(Boolean(data.highlight)))
           formData.append('sortOrder', String(data.sortOrder ?? 0))

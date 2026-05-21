@@ -1,26 +1,44 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './components/ui/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
 
-// Public pages
-import HomePage      from './pages/HomePage'
-import KnowledgePage from './pages/KnowledgePage'
-import SearchPage    from './pages/SearchPage'
+// Public (login-gated) pages
+import HomePage          from './pages/HomePage'
+import KnowledgePage     from './pages/KnowledgePage'
+import SearchPage        from './pages/SearchPage'
+import PortalFilePage    from './pages/PortalFilePage'
 
 // Auth
 import AdminLoginPage from './pages/AdminLoginPage'
 
 // Admin pages
-import AdminDashboard       from './pages/admin/AdminDashboard'
-import AdminLevel1Page      from './pages/admin/AdminLevel1Page'
-import AdminLevel2Page      from './pages/admin/AdminLevel2Page'
-import AdminKnowledgePage   from './pages/admin/AdminKnowledgePage'
-import Level1FormPage       from './pages/admin/Level1FormPage'
-import Level2FormPage       from './pages/admin/Level2FormPage'
-import KnowledgeFormPage    from './pages/admin/KnowledgeFormPage'
+import AdminDashboard         from './pages/admin/AdminDashboard'
+import AdminLevel1Page        from './pages/admin/AdminLevel1Page'
+import AdminLevel2Page        from './pages/admin/AdminLevel2Page'
+import AdminKnowledgePage     from './pages/admin/AdminKnowledgePage'
+import Level1FormPage         from './pages/admin/Level1FormPage'
+import Level2FormPage         from './pages/admin/Level2FormPage'
+import KnowledgeFormPage      from './pages/admin/KnowledgeFormPage'
+import AdminFolderPage        from './pages/admin/AdminFolderPage'
+import FolderFormPage         from './pages/admin/FolderFormPage'
+import AdminPermissionsPage   from './pages/admin/AdminPermissionsPage'
+import AdminSyncPage          from './pages/admin/AdminSyncPage'
+import AdminSyncUsersPage    from './pages/admin/AdminSyncUsersPage'
+import AdminSettingsPage     from './pages/admin/AdminSettingsPage'
+import SyncUserPage          from './pages/SyncUserPage'
 
+/** Requires user to be logged in (any role) */
+function AuthRoute({ children }) {
+  return (
+    <ProtectedRoute requiredRole="user">
+      {children}
+    </ProtectedRoute>
+  )
+}
+
+/** Requires admin role */
 function AdminWrapper({ children }) {
   return (
     <ProtectedRoute requiredRole="admin">
@@ -35,15 +53,21 @@ export default function App() {
       <AuthProvider>
         <ToastProvider>
           <Routes>
-            {/* Public routes */}
-            <Route path="/"             element={<HomePage />} />
-            <Route path="/knowledge/:id" element={<KnowledgePage />} />
-            <Route path="/search"       element={<SearchPage />} />
-
-            {/* Auth */}
+            {/* ── Login ── */}
             <Route path="/admin-login" element={<AdminLoginPage />} />
 
-            {/* Protected admin routes */}
+            {/* ── Public routes (login required) ── */}
+            <Route path="/"              element={<AuthRoute><HomePage /></AuthRoute>} />
+            <Route path="/knowledge/:id" element={<AuthRoute><KnowledgePage /></AuthRoute>} />
+            <Route path="/search"        element={<AuthRoute><SearchPage /></AuthRoute>} />
+
+            {/* File Portal viewer — no separate portal page */}
+            <Route path="/portal/file/:fileId" element={<AuthRoute><PortalFilePage /></AuthRoute>} />
+            {/* Redirect old portal paths to home */}
+            <Route path="/portal"    element={<Navigate to="/" replace />} />
+            <Route path="/portal/:id" element={<Navigate to="/" replace />} />
+
+            {/* ── Admin routes ── */}
             <Route path="/administrator" element={
               <AdminWrapper><AdminDashboard /></AdminWrapper>
             } />
@@ -73,6 +97,36 @@ export default function App() {
             } />
             <Route path="/administrator/knowledge/:id/edit" element={
               <AdminWrapper><KnowledgeFormPage /></AdminWrapper>
+            } />
+
+            {/* Portal admin routes */}
+            <Route path="/administrator/portal/folders" element={
+              <AdminWrapper><AdminFolderPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/portal/folders/new" element={
+              <AdminWrapper><FolderFormPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/portal/folders/:id/edit" element={
+              <AdminWrapper><FolderFormPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/portal/permissions/:folderId" element={
+              <AdminWrapper><AdminPermissionsPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/portal/sync" element={
+              <AdminWrapper><AdminSyncPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/portal/sync-users" element={
+              <AdminWrapper><AdminSyncUsersPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/settings" element={
+              <AdminWrapper><AdminSettingsPage /></AdminWrapper>
+            } />
+
+            {/* Sync User page */}
+            <Route path="/sync" element={
+              <ProtectedRoute requiredRole="syncuser">
+                <SyncUserPage />
+              </ProtectedRoute>
             } />
 
             {/* 404 */}

@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
-  timeout: 15000,
+  timeout: 60000,   // 60s general; sync calls override per-request
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -26,8 +26,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Only clear and redirect if we're on an admin page
-      if (window.location.pathname.startsWith('/administrator')) {
+      // Redirect to login if on admin or portal pages
+      const path = window.location.pathname
+      if (path.startsWith('/administrator') || path.startsWith('/portal')) {
         sessionStorage.removeItem('km_credentials')
         sessionStorage.removeItem('km_user')
         window.location.href = '/admin-login'

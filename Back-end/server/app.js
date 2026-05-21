@@ -16,6 +16,8 @@ const { requestLogger, errorLogger,
 const apiRoutes                           = require('./routes/api');
 const adminRoutes                         = require('./routes/admin');
 const administratorRoute                  = require('./routes/administrator');
+const portalFolderRoutes                  = require('./routes/folders');
+const portalPermissionRoutes              = require('./routes/permissions');
 const { getPool, closePool }              = require('./config/database');
 
 const app  = express();
@@ -34,7 +36,7 @@ app.use(cors({
     },
     credentials: true,
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization','X-Requested-With']
+    allowedHeaders: ['Content-Type','Authorization','X-Requested-With','X-Auth-User','X-Remote-User']
 }));
 
 // ============================================================
@@ -79,9 +81,23 @@ app.use(helmet({
 // ============================================================
 const globalLimiter = rateLimit({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-    max:      parseInt(process.env.RATE_LIMIT_MAX, 10)        || 200,
+    max:      parseInt(process.env.RATE_LIMIT_MAX, 10)        || 500,
     standardHeaders: true,
     legacyHeaders:   false,
+    // Key per authenticated username when Basic Auth is present,
+    // otherwise fall back to IP (for unauthenticated / health-check requests).
+    // This prevents one user's quota from blocking other users on the same corporate IP/NAT.
+    keyGenerator: (req) => {
+        const authHeader = req.get('Authorization') || '';
+        if (authHeader.startsWith('Basic ')) {
+            try {
+                const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+                const sep = decoded.indexOf(':');
+                if (sep > 0) return `user:${decoded.substring(0, sep).toLowerCase().trim()}`;
+            } catch { /* fall through to IP */ }
+        }
+        return req.ip || 'unknown';
+    },
     message:         { error: 'Too many requests, please try again later', code: 'RATE_LIMITED' },
     handler: (req, res, next, options) => {
         logger.logEvent('ERROR_SYSTEM', {
@@ -134,6 +150,8 @@ app.get('/health', async (req, res) => {
 app.use('/api',            apiRoutes);
 app.use('/api/admin',      adminLimiter, adminRoutes);
 app.use('/administrator',  adminLimiter, administratorRoute);
+app.use('/api/portal',     portalFolderRoutes);
+app.use('/api/portal',     portalPermissionRoutes);
 
 // ============================================================
 // 404 and Error handlers (must be last)
@@ -157,9 +175,50 @@ async function start() {
             });
         });
 
-        server.timeout         = 30000;
+        server.timeout         = 360000;  // 6 min — allows large UNC sync to complete
         server.keepAliveTimeout = 65000;
         server.headersTimeout   = 70000;
+
+        // ── Auto-sync scheduled job ──────────────────────────────
+        // Drive root อ่านจาก DB (dbo.SiteSettings key='portal_drive_root') ทุกครั้งที่ sync
+        // ไม่ใช้ PORTAL_DRIVE_ROOT จาก .env อีกต่อไป
+        const syncInterval = parseInt(process.env.SYNC_INTERVAL_MINUTES, 10) || 0;
+
+        if (syncInterval > 0) {
+            const folderSyncService = require('./services/folderSync.service');
+            const { getPool: _getPool } = require('./config/database');
+            const intervalMs = syncInterval * 60 * 1000;
+
+            const runAutoSync = async () => {
+                try {
+                    // อ่าน path จาก DB ทุกครั้ง — ถ้า admin อัพเดตใน Settings จะมีผลทันทีรอบหน้า
+                    const pool = await _getPool();
+                    const sr = await pool.request().query(
+                        "SELECT SettingValue FROM dbo.SiteSettings WHERE SettingKey = 'portal_drive_root'"
+                    );
+                    const syncRoot = sr.recordset[0]?.SettingValue;
+                    if (!syncRoot) {
+                        logger.logEvent('ERROR_SYSTEM', { level: 'warn', message: '[AUTO-SYNC] portal_drive_root ยังไม่ได้ตั้งค่าใน DB — ข้ามรอบนี้' });
+                        return;
+                    }
+                    const r = await folderSyncService.syncDrive(syncRoot, 'auto-sync', '127.0.0.1');
+                    logger.info({
+                        actionType: 'ERROR_SYSTEM',
+                        message: `[AUTO-SYNC] done — inserted:${r.inserted} updated:${r.updated} deleted:${r.deleted} files:${r.filesScanned}`,
+                    });
+                } catch (e) {
+                    logger.logEvent('ERROR_SYSTEM', { level: 'warn', message: `[AUTO-SYNC] failed: ${e.message}` });
+                }
+            };
+
+            setTimeout(runAutoSync, 15000); // 15 sec after startup
+            setInterval(runAutoSync, intervalMs);
+
+            logger.info({
+                actionType: 'ERROR_SYSTEM',
+                message: `[AUTO-SYNC] scheduled every ${syncInterval} min (drive root from DB)`,
+            });
+        }
 
         // Graceful shutdown
         const shutdown = async (signal) => {
