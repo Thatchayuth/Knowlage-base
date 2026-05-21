@@ -27,6 +27,7 @@ import AdminPermissionsPage   from './pages/admin/AdminPermissionsPage'
 import AdminSyncPage          from './pages/admin/AdminSyncPage'
 import AdminSyncUsersPage    from './pages/admin/AdminSyncUsersPage'
 import AdminSettingsPage     from './pages/admin/AdminSettingsPage'
+import AdminTermsPage        from './pages/admin/AdminTermsPage'
 import SyncUserPage          from './pages/SyncUserPage'
 
 /** Requires user to be logged in (any role) */
@@ -120,6 +121,9 @@ export default function App() {
             } />
             <Route path="/administrator/settings" element={
               <AdminWrapper><AdminSettingsPage /></AdminWrapper>
+            } />
+            <Route path="/administrator/terms" element={
+              <AdminWrapper><AdminTermsPage /></AdminWrapper>
             } />
 
             {/* Sync User page */}

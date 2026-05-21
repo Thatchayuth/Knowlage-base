@@ -5,7 +5,7 @@ const { authenticateAD } = require('../middlewares/auth');
 const { getMenu, getKnowledgeById, getFeaturedKnowledge } = require('../controllers/knowledgeController');
 const { search } = require('../controllers/searchController');
 const { getCurrentUser } = require('../controllers/authController');
-const { getSettings } = require('../controllers/settingsController');
+const { getSettings, serveTermsImage } = require('../controllers/settingsController');
 const { authenticateADother } = require('../middlewares/auth');
 
 // GET /api/menu - public, but attach user if authenticated (optional auth)
@@ -22,6 +22,9 @@ router.get('/featured', getFeaturedKnowledge);
 
 // GET /api/settings - public site settings
 router.get('/settings', getSettings);
+
+// GET /api/settings/terms-image - stream terms-of-use image (authenticated)
+router.get('/settings/terms-image', authenticateAD, serveTermsImage);
 
 // GET /api/auth/me - authenticate and return current user profile
 router.get('/auth/me', authenticateAD, getCurrentUser);

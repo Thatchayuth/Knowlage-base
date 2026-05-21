@@ -5,7 +5,7 @@ const { body, param } = require('express-validator');
 const { authenticateAD, authorizeGroup } = require('../middlewares/auth');
 const uploadFile = require('../middlewares/upload');
 const admin = require('../controllers/adminController');
-const { updateSettings } = require('../controllers/settingsController');
+const { updateSettings, updateTermsSettings, uploadTermsImage, deleteTermsImage } = require('../controllers/settingsController');
 
 // All admin routes require AD auth + admin-dt group
 router.use(authenticateAD);
@@ -71,5 +71,18 @@ router.put('/settings', [
     body('portal_icon').optional({ nullable: true }).trim().matches(/^[a-z0-9 -]+$/).withMessage('portal_icon invalid').isLength({ max: 100 }),
     body('portal_drive_root').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }).withMessage('portal_drive_root too long'),
 ], updateSettings);
+
+// ============================================================
+// TERMS IMAGE
+// ============================================================
+// POST /api/admin/terms-image  (multipart, field: termsImage)
+router.post('/terms-image', uploadTermsImage);
+// DELETE /api/admin/terms-image
+router.delete('/terms-image', deleteTermsImage);
+// PUT /api/admin/terms-settings  — inactivity timeout + enabled toggle
+router.put('/terms-settings', [
+    body('terms_inactivity_minutes').optional({ nullable: true }).isInt({ min: 0, max: 480 }).toInt(),
+    body('terms_image_enabled').optional({ nullable: true }).isBoolean().toBoolean(),
+], updateTermsSettings);
 
 module.exports = router;

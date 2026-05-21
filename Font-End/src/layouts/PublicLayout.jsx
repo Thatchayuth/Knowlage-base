@@ -6,6 +6,7 @@ import Spinner from '../components/ui/Spinner'
 import IconRenderer from '../components/ui/IconRenderer'
 import LogoNCR from '../img/NCR-logo-web.png'
 import PortalSidebarSection from '../components/portal/PortalSidebarSection'
+import TermsModal from '../components/TermsModal'
 
 function MenuSkeleton() {
   return (
@@ -159,6 +160,9 @@ export default function PublicLayout({ children }) {
 
   return (
     <div className="min-h-screen app-shell flex">
+      {/* Terms of Use Modal — แสดงครั้งแรกหลัง login ต่อ session */}
+      <TermsModal user={user} />
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
