@@ -57,7 +57,7 @@ function PortalFileItem({ file }) {
       className={`nav-item w-full text-left ${isActive ? 'nav-item-active pl-6' : 'nav-item-hover pl-6'}`}
     >
       <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${dotColor}`} />
-      <span className="truncate text-xs leading-snug flex-1">{file.FileName}</span>
+      <span className="truncate text-sm leading-snug flex-1">{file.FileName}</span>
       <span className={`text-[10px] font-mono flex-shrink-0 ${labelColor}`}>
         {label}
       </span>
@@ -105,7 +105,7 @@ function PortalFolderItem({ folder, depth = 0 }) {
     <div className="mb-0.5">
       <button
         onClick={handleToggle}
-        className="w-full flex items-center gap-2 py-1.5 text-sm text-slate-300 hover:text-slate-100 transition-colors pr-3"
+        className="w-full flex items-center gap-2 py-1.5 text-base text-slate-300 hover:text-slate-100 transition-colors pr-3"
         style={{ paddingLeft: `${12 + depth * 10}px` }}
       >
         {/* Folder icon */}
@@ -113,7 +113,7 @@ function PortalFolderItem({ folder, depth = 0 }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
         </svg>
 
-        <span className="font-medium flex-1 text-left truncate text-sm">{folder.FolderName}</span>
+        <span className="font-medium flex-1 text-left truncate text-base">{folder.FolderName}</span>
 
         {/* Loading spinner / chevron */}
         {loading ? (
@@ -186,7 +186,7 @@ export default function PortalSidebarSection() {
       {/* Section header — same style as MenuLevel1 */}
       <button
         onClick={handleToggle}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm font-display font-semibold text-slate-200 hover:text-accent-400 transition-colors group"
+        className="w-full flex items-center justify-between px-3 py-2 text-base font-display font-semibold text-slate-200 hover:text-accent-400 transition-colors group"
       >
         <span className="flex items-center gap-2">
           <FontAwesomeIcon
@@ -215,7 +215,7 @@ export default function PortalSidebarSection() {
       {expanded && !loading && (
         <div className="ml-1 border-l border-white/30 ml-4 pl-0">
           {error ? (
-            <p className="px-3 py-1.5 text-xs text-red-400 font-mono">{error}</p>
+            <p className="px-3 py-1.5 text-base text-red-400 font-mono">{error}</p>
           ) : (
             tree.map(folder => (
               <PortalFolderItem key={folder.Id} folder={folder} />

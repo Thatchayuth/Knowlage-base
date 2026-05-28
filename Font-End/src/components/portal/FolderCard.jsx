@@ -29,11 +29,11 @@ export default function FolderCard({ folder, onClick }) {
         customIcon={folder.Icon || null}
         className="text-2xl"
       />
-      <span className="text-sm text-slate-200 font-medium truncate w-full">
+      <span className="text-base text-slate-200 font-medium truncate w-full">
         {folder.FolderName}
       </span>
       {!folder._hasDirectAccess && (
-        <span className="text-xs text-slate-500" title="Navigation only">🔒</span>
+        <span className="text-base text-slate-500" title="Navigation only">🔒</span>
       )}
     </button>
   );

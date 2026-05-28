@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 
 export default function FolderBreadcrumb({ items = [], onNavigate }) {
   return (
-    <nav aria-label="breadcrumb" className="flex items-center gap-1 text-sm text-slate-400 mb-4 flex-wrap">
+    <nav aria-label="breadcrumb" className="flex items-center gap-1 text-base text-slate-400 mb-4 flex-wrap">
       {items.map((item, idx) => {
         const isLast = idx === items.length - 1;
         return (

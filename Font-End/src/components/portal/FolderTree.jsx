@@ -41,7 +41,7 @@ function FolderNode({ node, selectedId, onSelect, depth = 0 }) {
         title={node._hasDirectAccess === false ? 'ไม่มีสิทธิ์โดยตรง (navigation เท่านั้น)' : undefined}
       >
         {/* Expand arrow */}
-        <span className={`text-xs text-slate-500 transition-transform ${open && hasChildren ? 'rotate-90' : ''}`}>
+        <span className={`text-base text-slate-500 transition-transform ${open && hasChildren ? 'rotate-90' : ''}`}>
           {hasChildren ? '▶' : ' '}
         </span>
 
@@ -51,12 +51,12 @@ function FolderNode({ node, selectedId, onSelect, depth = 0 }) {
           className="text-base shrink-0"
         />
 
-        <span className="flex-1 text-left truncate text-sm">
+        <span className="flex-1 text-left truncate text-base">
           {node.FolderName}
         </span>
 
         {node._hasDirectAccess === false && (
-          <span className="text-slate-600 text-xs">🔒</span>
+          <span className="text-slate-600 text-base">🔒</span>
         )}
 
         {hasChildren && (
@@ -90,7 +90,7 @@ function FolderNode({ node, selectedId, onSelect, depth = 0 }) {
 
 export default function FolderTree({ nodes = [], selectedId, onSelect }) {
   if (!nodes.length) {
-    return <p className="text-slate-500 text-xs px-3 py-2">ไม่มีโฟลเดอร์</p>;
+    return <p className="text-slate-500 text-base px-3 py-2">ไม่มีโฟลเดอร์</p>;
   }
 
   return (

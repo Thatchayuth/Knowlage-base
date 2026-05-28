@@ -133,7 +133,7 @@ export default function TermsModal({ user }) {
             </div>
           </div>
           {/* Zoom toggle */}
-          <button
+          {/* <button
             onClick={() => setZoomed(z => !z)}
             title={zoomed ? 'ย่อรูป' : 'ขยายรูป'}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
@@ -148,6 +148,15 @@ export default function TermsModal({ user }) {
                   d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
               </svg>
             )}
+          </button> */}
+                <button
+            onClick={handleAccept}
+            title="ปิด"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+          >
+               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
           </button>
         </div>
 
@@ -157,11 +166,11 @@ export default function TermsModal({ user }) {
             src={imgSrc}
             alt="เงื่อนไขการใช้งาน"
             className={`rounded-lg shadow-sm select-none transition-all duration-200 ${
-              zoomed
+              !zoomed
                 ? 'w-full h-auto rounded-none shadow-none'
                 : 'max-w-full h-auto cursor-zoom-in'
             }`}
-            onClick={() => !zoomed && setZoomed(true)}
+            onClick={() => zoomed && setZoomed(true)}
             draggable={false}
           />
         </div>

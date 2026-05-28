@@ -42,7 +42,7 @@ function MenuLevel1({ item, activeId }) {
     <div className="mb-1">
       <button
         onClick={() => setExpanded(p => !p)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm font-display font-semibold text-slate-200 hover:text-accent-400 transition-colors group"
+        className="w-full flex items-center justify-between px-3 py-2 text-base font-display font-semibold text-slate-200 hover:text-accent-400 transition-colors group"
       >
         <span className="flex items-center gap-2">
           <IconRenderer icon={item.icon} className="w-4 h-4 text-accent-500/80 group-hover:text-accent-400 transition-colors" />
@@ -87,7 +87,7 @@ function MenuLevel2({ item, activeId }) {
     <div className="mb-0.5">
       <button
         onClick={() => setExpanded(p => !p)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-slate-100 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-1.5 text-base text-slate-300 hover:text-slate-100 transition-colors"
       >
         <IconRenderer icon={item.icon} className="w-3.5 h-3.5 text-slate-500" />
         <span className="font-medium">{item.name}</span>
@@ -122,7 +122,7 @@ function MenuKnowledgeItem({ item, activeId }) {
         className="nav-item nav-item-hover pl-4"
       >
         <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-sky-500" />
-        <span className="truncate text-sm leading-snug flex-1">{item.title}</span>
+        <span className="truncate text-base leading-snug flex-1">{item.title}</span>
         <svg className="w-3 h-3 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
         </svg>
@@ -136,9 +136,43 @@ function MenuKnowledgeItem({ item, activeId }) {
       className={`nav-item ${isActive ? 'nav-item-active pl-4' : 'nav-item-hover pl-4'}`}
     >
       <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-accent-500' : 'bg-steel-600'}`} />
-      <span className="truncate text-sm leading-snug flex-1">{item.title}</span>
+      <span className="truncate text-base leading-snug flex-1">{item.title}</span>
     </Link>
   )
+}
+
+// --- Greeting/clock helpers for 24/7 operation (moved from HomePage) ---
+function getGreeting(h) {
+  if (h >= 5  && h < 11) return { th: 'สวัสดีตอนเช้า',  sub: 'Good morning',   shift: 'กะเช้า',  icon: '🌅' }
+  if (h >= 11 && h < 13) return { th: 'สวัสดีตอนเที่ยง', sub: 'Good noon',      shift: 'กะเช้า',  icon: '☀️' }
+  if (h >= 13 && h < 17) return { th: 'สวัสดีตอนบ่าย',   sub: 'Good afternoon', shift: 'กะบ่าย',  icon: '🌤️' }
+  if (h >= 17 && h < 20) return { th: 'สวัสดีตอนเย็น',   sub: 'Good evening',   shift: 'กะบ่าย',  icon: '🌆' }
+  if (h >= 20 && h < 24) return { th: 'สวัสดีตอนค่ำ',    sub: 'Good night',     shift: 'กะดึก',   icon: '🌙' }
+  return                       { th: 'สวัสดีตอนดึก',    sub: 'Late night shift', shift: 'กะดึก', icon: '🌃' }
+}
+
+const THAI_DAYS   = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+
+function formatThaiDate(d) {
+  return `วัน${THAI_DAYS[d.getDay()]}ที่ ${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`
+}
+function pad2(n) { return String(n).padStart(2, '0') }
+
+// --- Greeting/clock state (for Navbar) ---
+function useGreetingClock() {
+  const { user } = useAuth();
+  const greetingName = user?.displayName || user?.username || '';
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const g = getGreeting(now.getHours());
+  const hh = pad2(now.getHours());
+  const mm = pad2(now.getMinutes());
+  const ss = pad2(now.getSeconds());
+  return { greetingName, g, hh, mm, ss };
 }
 
 export default function PublicLayout({ children }) {
@@ -205,7 +239,7 @@ export default function PublicLayout({ children }) {
                 value={searchQ}
                 onChange={e => setSearchQ(e.target.value)}
                 placeholder="Search knowledge…"
-                className="input-field pr-9 text-sm py-2"
+                className="input-field pr-9 text-base py-2"
               />
               <button
                 type="submit"
@@ -229,13 +263,13 @@ export default function PublicLayout({ children }) {
           {/* IFAQ */}
           {loading && <MenuSkeleton />}
           {error && (
-            <div className="p-4 text-sm text-red-400 font-mono">{error}</div>
+            <div className="p-4 text-base text-red-400 font-mono">{error}</div>
           )}
           {!loading && !error && menu.map(item => (
             <MenuLevel1 key={item.id} item={item} activeId={id} />
           ))}
           {!loading && !error && menu.length === 0 && (
-            <p className="p-4 text-sm text-slate-500">No categories found.</p>
+            <p className="p-4 text-base text-slate-500">No categories found.</p>
           )}
         </div>
 
@@ -291,24 +325,77 @@ export default function PublicLayout({ children }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-brand text-white">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-3">
-            <img src={LogoNCR} alt="NCR Knowledge Base" className="h-7 w-auto" />
-            <div className="leading-tight">
-              <p className="font-display font-semibold text-slate-100 text-sm">I-FAQ Knowledge Base</p>
-              <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Internal Portal</p>
-            </div>
+        {/* Top navbar (touch-friendly, sticky) */}
+        <header className="sticky top-0 z-20 flex-shrink-0 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden flex-shrink-0 w-12 h-12 flex items-center justify-center text-brand hover:bg-slate-100 active:bg-slate-200 rounded-xl transition-colors"
+              aria-label="เปิดเมนู"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Mobile brand */}
+            <Link to="/" className="lg:hidden flex items-center gap-2 min-w-0 flex-shrink-0">
+              <img src={LogoNCR} alt="NCR" className="h-8 w-auto flex-shrink-0" />
+              <span className="font-display font-semibold text-brand text-base truncate hidden sm:inline">I-FAQ</span>
+            </Link>
+
+            {/* Search (full-width, touch-friendly) */}
+            <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 max-w-3xl mx-auto lg:mx-0">
+              <div className="relative flex-1">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="search"
+                  value={searchQ}
+                  onChange={e => setSearchQ(e.target.value)}
+                  placeholder="ค้นหาเอกสาร ขั้นตอน หรือกลุ่ม…"
+                  className="w-full h-12 pl-12 pr-4 rounded-xl bg-slate-100 border border-slate-200 focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 text-base text-brand-ink placeholder:text-slate-400 outline-none transition-all"
+                />
+                {searchQ && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQ('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg"
+                    aria-label="ล้าง"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="flex-shrink-0 h-12 px-5 sm:px-8 rounded-xl bg-brand text-white font-display font-semibold text-base hover:bg-brand/90 active:scale-95 shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span className="hidden sm:inline">ค้นหา</span>
+              </button>
+            </form>
+
+            {/* Home shortcut */}
+            <Link
+              to="/"
+              className="hidden lg:flex flex-shrink-0 w-12 h-12 items-center justify-center text-slate-500 hover:text-brand hover:bg-slate-100 active:bg-slate-200 rounded-xl transition-colors"
+              title="หน้าแรก"
+              aria-label="หน้าแรก"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </Link>
           </div>
-        </div>
+        </header>
 
 
         {/* Page content */}

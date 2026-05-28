@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roles of Cell-E Onsite Desktop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --blue-main: #004085;
+            --blue-light: #f0f5fa;
+            --red-main: #bd2130;
+            --red-light: #fff5f5;
+            --green-main: #1e7e34;
+            --green-light: #f4faf6;
+            --text-dark: #333333;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: var(--text-dark);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            padding: 24px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- HEADER SECTION --- */
+        .header {
+            display: flex;
+            align-items: center;
+            border-bottom: 3px solid var(--blue-main);
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+            gap: 20px;
+        }
+
+        .header-icon {
+            width: 60px;
+            height: 60px;
+            color: var(--blue-main);
+            flex-shrink: 0;
+        }
+
+        .header-title h1 {
+            font-size: 2rem;
+            color: var(--blue-main);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        /* --- MAIN GRID SYSTEM --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            flex-grow: 1;
+        }
+
+        .column {
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+
+        /* --- COLUMN HEADERS --- */
+        .col-header {
+            color: white;
+            padding: 14px;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .col-subheader {
+            text-align: center;
+            padding: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* Color Themes for Columns */
+        .col-blue { border-top: 5px solid var(--blue-main); }
+        .col-blue .col-header { background-color: var(--blue-main); }
+        .col-blue .col-subheader { color: var(--blue-main); background-color: #e6f0fa; }
+        .col-blue .col-content { background-color: var(--blue-light); }
+
+        .col-red { border-top: 5px solid var(--red-main); }
+        .col-red .col-header { background-color: var(--red-main); }
+        .col-red .col-subheader { color: var(--red-main); background-color: #fde8e8; }
+        .col-red .col-content { background-color: var(--red-light); }
+
+        .col-green { border-top: 5px solid var(--green-main); }
+        .col-green .col-header { background-color: var(--green-main); }
+        .col-green .col-subheader { color: var(--green-main); background-color: #eaf6ed; }
+        .col-green .col-content { background-color: var(--green-light); }
+
+        .col-content {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* --- LINKS & CARDS STYLING --- */
+        .card-link {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            text-decoration: none;
+            color: var(--text-dark);
+            border: 1px solid #cbd5e1;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .card-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #94a3b8;
+        }
+
+        /* Column 1 Specific: Normal Work Layout */
+        .badge-num {
+            background-color: var(--blue-main);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .laptop-preview {
+            width: 70px;
+            height: auto;
+            margin-right: 16px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .report-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .report-title {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        
+        .col-blue .report-title { color: var(--blue-main); }
+        .col-blue .report-subtitle { color: #555; font-size: 0.85rem; }
+
+        /* Column 2 Specific: Production Papers Label */
+        .section-label {
+            color: var(--red-main);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        .icon-wrapper {
+            width: 32px;
+            height: 32px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .col-red .card-link {
+            border-left: 4px solid var(--red-main);
+        }
+
+        .illustration-box {
+            margin-top: auto;
+            text-align: center;
+            padding-top: 20px;
+        }
+
+        .illustration-box svg {
+            width: 100px;
+            height: auto;
+            opacity: 0.8;
+        }
+
+        /* Column 3 Specific: Additional Info */
+        .col-green .card-link {
+            border-left: 4px solid var(--green-main);
+            padding: 10px 14px;
+        }
+        
+        .link-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* --- FOOTER SECTION --- */
+        .footer {
+            margin-top: 24px;
+            border-top: 2px solid var(--border-color);
+            padding-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .footer-th {
+            font-weight: 600;
+            color: var(--blue-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-en {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- RESPONSIVE DESIGN FOR TABLET/MOBILE --- */
+        @media (max-width: 1024px) {
+            .grid-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .footer {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <header class="header">
+            <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+                <path d="M6 12l2-3 2 4 4-6 2 3" />
+            </svg>
+            <div class="header-title">
+                <h1>Roles of Cell-E Onsite Desktop, Responsibilities and Authorities</h1>
+            </div>
+        </header>
+
+        <div class="grid-container">
+
+            <div class="column col-blue">
+                <div class="col-header">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    NORMAL WORK
+                </div>
+                <div class="col-subheader">ให้เปิดหน้าจอค้างไว้ดังนี้</div>
+                <div class="col-content">
+                    
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="badge-num">1</div>
+                        <svg class="laptop-preview" viewBox="0 0 24 24" fill="none" stroke="#004085" stroke-width="1.5">
+                            <rect x="3" y="4" width="18" height="12" rx="1"/>
+                            <path d="M2 18h20v2H2z"/>
+                            <circle cx="7" cy="10" r="1.5" fill="#004085"/>
+                            <line x1="11" y1="8" x2="19" y2="8" />
+                            <line x1="11" y1="11" x2="17" y2="11" />
+                            <line x1="11" y1="14" x2="15" y2="14" />
+                        </svg>
+                        <div class="report-text">
+                            <span class="report-title">Daily report</span>
+                            <span class="report-subtitle">(Power BI Desktop)</span>
+                        </div>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="badge-num">2</div>
+                        <svg class="laptop-preview" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="1.5">
+                            <rect x="3" y="4" width="18" height="12" rx="1"/>
+                            <path d="M2 18h20v2H2z"/>
+                            <path d="M6 7h12v6H6z" stroke-dasharray="2 1"/>
+                        </svg>
+                        <div class="report-text">
+                            <span class="report-title" style="color: #1e7e34;">Weekly report</span>
+                            <span class="report-subtitle">(Excel Dashboard)</span>
+                        </div>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="badge-num">3</div>
+                        <svg class="laptop-preview" viewBox="0 0 24 24" fill="none" stroke="#004085" stroke-width="1.5">
+                            <rect x="3" y="4" width="18" height="12" rx="1"/>
+                            <path d="M2 18h20v2H2z"/>
+                            <path d="M6 14v-3m4 3V8m4 6v-4m4 4V7" />
+                        </svg>
+                        <div class="report-text">
+                            <span class="report-title">Monthly report</span>
+                            <span class="report-subtitle">(Power BI Desktop)</span>
+                        </div>
+                    </a>
+
+                </div>
+            </div>
+
+            <div class="column col-red">
+                <div class="col-header">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    ABNORMAL WORK
+                </div>
+                <div class="col-subheader">สามารถเข้าถึงข้อมูลได้ดังนี้</div>
+                <div class="col-content">
+                    
+                    <div class="section-label">Production Papers</div>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="22" height="22" fill="var(--red-main)" viewBox="0 0 24 24"><path d="M4 2v20h2v-8h10l2-3-2-3h-10v-6h12v-2h-14z"/></svg>
+                        </div>
+                        <span class="link-text">Know your Machine (Red Flag)</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="22" height="22" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        </div>
+                        <span class="link-text">OPL</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="22" height="22" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <span class="link-text"><strong style="color:var(--red-main);">A3</strong> Report</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="22" height="22" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        </div>
+                        <span class="link-text">ขั้นตอนและวิธีการปฏิบัติงานที่จำเป็น (PR/WI)</span>
+                    </a>
+
+                    <div class="illustration-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                            <path d="M10 11l2 2 4-4"/>
+                        </svg>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="column col-green">
+                <div class="col-header">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    ADDITIONAL INFO
+                </div>
+                <div class="col-subheader">ประกอบการบริหารการจัดการ</div>
+                <div class="col-content">
+                    
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="var(--green-main)" viewBox="0 0 24 24"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                        </div>
+                        <span class="link-text">Safety Report</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="none" stroke="var(--green-main)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3a9 9 0 00-9 9h18a9 9 0 00-9-9zM3 12a9 9 0 009 9 9 9 0 009-9H3z"/></svg>
+                        </div>
+                        <span class="link-text">Safety Rules</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 7v6M9 10h6"/></svg>
+                        </div>
+                        <span class="link-text">ICT Rules / Cyber Security Awareness</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm14 10v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75"/></svg>
+                        </div>
+                        <span class="link-text">HR Attendance record</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+                        </div>
+                        <span class="link-text">HR Training record</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10zM2 12h20"/></svg>
+                        </div>
+                        <span class="link-text">NCR Intranet website</span>
+                    </a>
+
+                    <a href="#" class="card-link" target="_blank">
+                        <div class="icon-wrapper">
+                            <svg width="20" height="20" fill="none" stroke="#4a5568" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        </div>
+                        <span class="link-text">Training Material</span>
+                    </a>
+
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="footer">
+            <div class="footer-th">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                ข้อมูลถูกต้อง ทันเวลา โปร่งใส สนับสนุนการตัดสินใจ
+            </div>
+            <div class="footer-en">
+                Accurate | Timely | Transparent | Support Decision Making
+            </div>
+        </footer>
+
+    </div>
+
+</body>
+</html>

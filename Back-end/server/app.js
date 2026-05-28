@@ -18,13 +18,14 @@ const adminRoutes                         = require('./routes/admin');
 const administratorRoute                  = require('./routes/administrator');
 const portalFolderRoutes                  = require('./routes/folders');
 const portalPermissionRoutes              = require('./routes/permissions');
+const homeRoutes                          = require('./routes/home');
 const { getPool, closePool }              = require('./config/database');
 
 const app  = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 const cors = require('cors');
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.73:5173,http://192.168.8.120:4200,http://192.168.8.120:8000';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.105:5173,http://192.168.8.120:4200,http://192.168.8.120:8000'; 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.105:5173,http://192.168.8.120:4200,http://192.168.8.120:8000';
 // || 'http://localhost:5173' 
 // CORS: allow front-end dev server and production origin (from env)
 app.use(cors({
@@ -152,6 +153,8 @@ app.use('/api/admin',      adminLimiter, adminRoutes);
 app.use('/administrator',  adminLimiter, administratorRoute);
 app.use('/api/portal',     portalFolderRoutes);
 app.use('/api/portal',     portalPermissionRoutes);
+app.use('/api/home',       homeRoutes.publicRouter);
+app.use('/api/admin/home', adminLimiter, homeRoutes.adminRouter);
 
 // ============================================================
 // 404 and Error handlers (must be last)

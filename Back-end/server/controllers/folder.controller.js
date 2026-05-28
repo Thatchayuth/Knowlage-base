@@ -120,7 +120,7 @@ async function serveFile(req, res) {
     }
 
     const filePath = fileMeta.FullPath;
-
+    // console.log(`Serving file ${fileMeta.FileName} (id=${fileId}) to ${req.portalUser.username} from IP ${req.ip}`);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: 'File not found on disk' });
     }
@@ -128,7 +128,7 @@ async function serveFile(req, res) {
     const stat     = fs.statSync(filePath);
     const mimeType = fileMeta.MimeType || 'application/octet-stream';
     const fileName = fileMeta.FileName;
-
+    console.log(`Serving file ${fileName} (id=${fileId}, size=${stat.size}, mime=${mimeType}) to ${req.portalUser.username} from IP ${req.ip}`);
     // PDF — inline
     if (mimeType === 'application/pdf') {
       res.setHeader('Content-Type', 'application/pdf');
@@ -139,6 +139,7 @@ async function serveFile(req, res) {
 
     // Video — range support
     if (mimeType.startsWith('video/')) {
+      console.log(`Video request with Range: J${req.headers}`);
       const range = req.headers.range;
       if (range) {
         const parts    = range.replace(/bytes=/, '').split('-');

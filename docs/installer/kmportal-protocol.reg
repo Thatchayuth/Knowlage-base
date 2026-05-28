@@ -1,0 +1,33 @@
+Windows Registry Editor Version 5.00
+
+; ==============================================================
+;  KM Portal — Custom URL Protocol Handler
+;  ─────────────────────────────────────────────────────────────
+;  Registers the "kmportal://" URL scheme so links from the web
+;  portal can open files/programs locally on the Windows client.
+;
+;  Example URL from the web:
+;    kmportal://open?type=powerbi&path=%5C%5Cserver%5Cshare%5Creport.pbix
+;
+;  After importing this .reg, copy:
+;    C:\KMPortal\kmportal-launcher.ps1
+;  (or change the path below to wherever you placed the script)
+;
+;  IMPORTANT — The launcher path is HARD-CODED below.
+;  Edit C:\\KMPortal\\kmportal-launcher.ps1 if you put it elsewhere.
+;  Backslashes inside .reg values must be doubled (\\).
+; ==============================================================
+
+[HKEY_CLASSES_ROOT\kmportal]
+@="URL:KM Portal Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\kmportal\DefaultIcon]
+@="%SystemRoot%\\System32\\shell32.dll,3"
+
+[HKEY_CLASSES_ROOT\kmportal\shell]
+
+[HKEY_CLASSES_ROOT\kmportal\shell\open]
+
+[HKEY_CLASSES_ROOT\kmportal\shell\open\command]
+@="powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\KMPortal\\kmportal-launcher.ps1\" \"%1\""

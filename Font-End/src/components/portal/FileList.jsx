@@ -58,7 +58,7 @@ export default function FileList({ files = [], loading, error, onOpenFile }) {
   }
 
   if (error) {
-    return <p className="text-red-400 text-sm">{error}</p>;
+    return <p className="text-red-400 text-base">{error}</p>;
   }
 
   if (!files.length) {
@@ -72,7 +72,7 @@ export default function FileList({ files = [], loading, error, onOpenFile }) {
 
   return (
     <div className="overflow-x-auto panel">
-      <table className="w-full text-sm">
+      <table className="w-full text-base">
         <thead>
           <tr className="text-left text-steel-500 border-b border-slate-700/50">
             <th className="px-4 py-3 font-medium">ชื่อไฟล์</th>
