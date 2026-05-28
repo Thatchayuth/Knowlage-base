@@ -154,6 +154,20 @@ function SubFolderNode({ folder, accent, depth = 0 }) {
 function SubFileItem({ file }) {
   const navigate = useNavigate()
   const badge = fileBadge(file)
+  if(badge.label === 'XLS') {
+    const url = `kmportal://open?type=${encodeURIComponent(file.MimeType || 'file')}&path=${encodeURIComponent(file.FullPath || '')}`
+    return (
+      <li>
+        <a href={url} className="w-full flex items-center gap-1.5 py-1 pl-1.5 pr-2 rounded-md text-left text-base text-slate-600 hover:bg-slate-50 hover:text-brand transition-colors group">
+          <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+          <span className="truncate flex-1">{file.FileName}</span>
+          <span className={`text-[9px] font-mono font-semibold flex-shrink-0 ${badge.text} opacity-70 group-hover:opacity-100`}>
+            {badge.label}
+          </span>
+        </a>
+      </li>
+    )
+  }
   return (
     <li>
       <button
