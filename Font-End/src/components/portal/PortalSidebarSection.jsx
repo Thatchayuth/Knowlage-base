@@ -41,7 +41,7 @@ function isExcel(file) {
 }
 
 // ── PortalFileItem ────────────────────────────────────────────────
-function PortalFileItem({ file }) {
+function PortalFileItem({ file, depth = 0 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const isActive = location.pathname === `/portal/file/${file.Id}`
@@ -51,11 +51,29 @@ function PortalFileItem({ file }) {
   const label    = pdf ? 'PDF' : excel ? 'XLS' : 'VDO'
   const labelColor = pdf ? 'text-orange-400/70' : excel ? 'text-green-400/70' : 'text-purple-400/70'
 
+  const bgClass = isActive
+    ? 'nav-item-active'
+    : `nav-item-hover ${
+        depth === 0
+          ? ''
+          : depth === 1
+            ? 'bg-white/[0.02]'
+            : depth === 2
+              ? 'bg-white/[0.04]'
+              : 'bg-white/[0.06]'
+      }`
+
   return (
     <button
       onClick={() => navigate(`/portal/file/${file.Id}`, { state: { file } })}
-      className={`nav-item w-full text-left ${isActive ? 'nav-item-active pl-6' : 'nav-item-hover pl-6'}`}
+      className={`nav-item w-full text-left flex items-center gap-2 py-1.5 pr-3 pl-3 ${bgClass}`}
     >
+      {/* Branch line for sub-files */}
+      {depth > 0 && (
+        <svg className="w-3.5 h-3.5 text-slate-500/50 flex-shrink-0 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v10a2 2 0 002 2h8" />
+        </svg>
+      )}
       <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${dotColor}`} />
       <span className="truncate text-sm leading-snug flex-1">{file.FileName}</span>
       <span className={`text-[10px] font-mono flex-shrink-0 ${labelColor}`}>
@@ -101,16 +119,41 @@ function PortalFolderItem({ folder, depth = 0 }) {
     if (next && children === null) await loadData()
   }, [expanded, children, storageKey, loadData])
 
+  // Folder icon color based on depth for premium look and feel
+  const folderColor = depth === 0
+    ? 'text-sky-400'
+    : depth === 1
+      ? 'text-teal-400/80'
+      : 'text-amber-400/70'
+
+  const bgClass = depth === 0
+    ? ''
+    : depth === 1
+      ? 'bg-white/[0.02] hover:bg-white/[0.06] rounded-xl'
+      : depth === 2
+        ? 'bg-white/[0.04] hover:bg-white/[0.08] rounded-xl'
+        : 'bg-white/[0.06] hover:bg-white/[0.10] rounded-xl'
+
   return (
     <div className="mb-0.5">
       <button
         onClick={handleToggle}
-        className="w-full flex items-center gap-2 py-1.5 text-base text-slate-300 hover:text-slate-100 transition-colors pr-3"
-        style={{ paddingLeft: `${12 + depth * 10}px` }}
+        className={`w-full flex items-center gap-2 py-1.5 text-base text-slate-300 hover:text-slate-100 transition-colors pr-3 pl-3 ${bgClass}`}
       >
-        {/* Folder icon */}
-        <svg className="w-3.5 h-3.5 text-accent-500/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        {/* Branch line for subfolders */}
+        {depth > 0 && (
+          <svg className="w-3.5 h-3.5 text-slate-500/50 flex-shrink-0 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v10a2 2 0 002 2h8" />
+          </svg>
+        )}
+
+        {/* Folder icon — toggles between open and closed state */}
+        <svg className={`w-3.5 h-3.5 ${folderColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {expanded ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 10h20M2 10V6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v2M2 10v8a2 2 0 002 2h16a2 2 0 002-2v-8" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+          )}
         </svg>
 
         <span className="font-medium flex-1 text-left truncate text-base">{folder.FolderName}</span>
@@ -132,12 +175,12 @@ function PortalFolderItem({ folder, depth = 0 }) {
       </button>
 
       {expanded && (
-        <div className="border-l border-white/20" style={{ marginLeft: `${16 + depth * 10}px` }}>
+        <div className="pl-0">
           {children?.map(child => (
             <PortalFolderItem key={child.Id} folder={child} depth={depth + 1} />
           ))}
           {files?.map(file => (
-            <PortalFileItem key={file.Id} file={file} />
+            <PortalFileItem key={file.Id} file={file} depth={depth + 1} />
           ))}
           {!loading && children?.length === 0 && files?.length === 0 && (
             <p className="px-3 py-1 text-xs text-slate-600 italic">ไม่มีไฟล์</p>
