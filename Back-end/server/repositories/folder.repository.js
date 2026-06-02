@@ -241,14 +241,14 @@ async function getAllPaths() {
  */
 async function softDeleteFolder(id) {
   const pool = await getPool();
-  await pool.request()
-    .input('id', sql.Int, id)
-    .query(`
-      UPDATE dbo.Folders
-      SET    IsActive  = 0,
-             UpdatedAt = GETDATE()
-      WHERE  Id = @id
-    `);
+  // await pool.request()
+  //   .input('id', sql.Int, id)
+  //   .query(`
+  //     UPDATE dbo.Folders
+  //     SET    IsActive  = 0,
+  //            UpdatedAt = GETDATE()
+  //     WHERE  Id = @id
+  //   `);
 }
 
 module.exports = {

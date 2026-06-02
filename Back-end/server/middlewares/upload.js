@@ -4,9 +4,17 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 
-const uploadDir = 'D:\\NCR_iBot\\NCR-iBot-Live\\src\\Pdf_file';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+let uploadDir = process.env.UPLOAD_DIR || 'D:\\NCR_iBot\\NCR-iBot-Live\\src\\Pdf_file';
+try {
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+} catch (err) {
+    console.warn(`Warning: Failed to create or access upload directory "${uploadDir}". Falling back to local "Pdf_file" directory. Error: ${err.message}`);
+    uploadDir = path.join(__dirname, '..', '..', 'Pdf_file');
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
 }
 
 const storage = multer.diskStorage({

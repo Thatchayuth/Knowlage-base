@@ -61,12 +61,12 @@ async function create(username, createdBy) {
  */
 async function remove(id) {
   const pool = await getPool();
-  const result = await pool.request()
-    .input('id', sql.Int, id)
-    .query(`
-      UPDATE dbo.SyncUsers SET IsActive = 0 WHERE Id = @id AND IsActive = 1
-    `);
-  return result.rowsAffected[0] > 0;
+  // const result = await pool.request()
+  //   .input('id', sql.Int, id)
+  //   .query(`
+  //     UPDATE dbo.SyncUsers SET IsActive = 0 WHERE Id = @id AND IsActive = 1
+  //   `);
+  return 0//result.rowsAffected[0] > 0;;
 }
 
 module.exports = { getAll, getByUsername, create, remove };

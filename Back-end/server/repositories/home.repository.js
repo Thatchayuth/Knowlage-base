@@ -48,6 +48,12 @@ async function getItemsByGroup(groupId, includeDisabled = false) {
             WHERE  GroupId = @gid ${where}
             ORDER  BY SortOrder, Id
         `);
+    // console.log(`SELECT Id, GroupId, Title, Subtitle, Icon, LinkType, ProgramType,
+    //                FolderId, KnowledgeId, ExternalUrl, SortOrder, IsEnabled,
+    //                CreatedAt, UpdatedAt, UpdatedBy
+    //         FROM   dbo.HomeItems
+    //         WHERE  GroupId = ${groupId} ${where}
+    //         ORDER  BY SortOrder, Id`)
     return r.recordset;
 }
 

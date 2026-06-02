@@ -68,6 +68,10 @@ async function _getFolderSummaries(ids = []) {
         WHERE  IsActive = 1
           AND  Id IN (${safeIds.join(',')})
     `);
+    console.log(`SELECT Id, FolderName, FullPath, ParentId, Icon, Description
+        FROM   dbo.Folders
+        WHERE  IsActive = 1
+          AND  Id IN (${safeIds.join(',')})`);
     const map = new Map();
     for (const row of r.recordset) map.set(row.Id, row);
     return map;
@@ -104,7 +108,9 @@ async function getHomeForUser(userGroups = []) {
 
     // Folder summaries
     const folderIds = allItems.filter(it => it.LinkType === 'folder' && it.FolderId).map(it => it.FolderId);
+    console.log(`Folder IDs to fetch summaries for:`, folderIds);
     const folderMap = await _getFolderSummaries([...new Set(folderIds)]);
+
 
     // Knowledge titles
     const knIds = allItems.filter(it => it.LinkType === 'knowledge' && it.KnowledgeId).map(it => it.KnowledgeId);
@@ -137,7 +143,11 @@ async function getHomeForUser(userGroups = []) {
                     hasAccess:   !!filePath,
                 });
             } else if (it.LinkType === 'folder') {
+                console.log(`Processing folder item ${it.Title} with FolderId ${it.FolderId}`);
                 const folder = it.FolderId ? folderMap.get(it.FolderId) : null;
+                
+                    console.log(`Folder summary for id 1546:`, folder);
+                
                 if (!folder) continue; // folder removed/inactive — skip
                 let allowed = isAdminAll;
                 if (!allowed) {

@@ -16,6 +16,7 @@ import { useFolderFiles }               from '../hooks/useFolderFiles';
 import { getFolderChildren }            from '../services/portal.service';
 import FolderCard                       from '../components/portal/FolderCard';
 import FileList                         from '../components/portal/FileList';
+import { getApiBaseUrl }                from '../services/axios';
 
 // ── helpers ──────────────────────────────────────────────────
 
@@ -90,7 +91,7 @@ export default function FolderViewPage() {
 
   const handleOpenFile = (file) => {
     // Build full backend URL (works in both dev and prod)
-    const apiBase = import.meta.env.VITE_API_URL || '';
+    const apiBase = getApiBaseUrl();
     const fileUrl = `${apiBase}/api/portal/files/${file.Id}`;
 
     // Attach credentials header — iframe/anchor can't send headers,

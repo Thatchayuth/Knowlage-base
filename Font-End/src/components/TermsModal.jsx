@@ -10,7 +10,7 @@ const STORAGE_KEY = 'km_terms_accepted'
  * - กด "รับทราบและยอมรับ" → บันทึก sessionStorage → ปิด modal
  * - terms_inactivity_minutes > 0 → เมื่อไม่มี activity นาน N นาที → แสดง popup ซ้ำ
  */
-export default function TermsModal({ user }) {
+export default function TermsModal({ user, forceShow = false, readOnly = false, onClose }) {
   const [show,    setShow]    = useState(false)
   const [imgSrc,  setImgSrc]  = useState(null)
   const [loading, setLoading] = useState(true)
@@ -108,7 +108,17 @@ export default function TermsModal({ user }) {
     startInactivityTimer()
   }, [startInactivityTimer])
 
-  if (!show || loading) return null
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose()
+    } else {
+      handleAccept()
+    }
+  }, [onClose, handleAccept])
+
+  const isVisible = (forceShow || show) && !loading && imgSrc
+
+  if (!isVisible) return null
 
   return (
     <div
@@ -127,36 +137,21 @@ export default function TermsModal({ user }) {
             </div>
             <div>
               <h2 className="font-display font-bold text-slate-800 text-base leading-tight">
-                เงื่อนไขการใช้งาน
+                {readOnly ? 'ข้อมูลเกี่ยวกับระบบ (About)' : 'เงื่อนไขการใช้งาน'}
               </h2>
-              <p className="text-xs text-slate-500">กรุณาอ่านและยอมรับก่อนใช้งานระบบ</p>
+              <p className="text-xs text-slate-500">
+                {readOnly ? 'นโยบายและแนวทางการใช้งานระบบ' : 'กรุณาอ่านและยอมรับก่อนใช้งานระบบ'}
+              </p>
             </div>
           </div>
-          {/* Zoom toggle */}
-          {/* <button
-            onClick={() => setZoomed(z => !z)}
-            title={zoomed ? 'ย่อรูป' : 'ขยายรูป'}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-          >
-            {zoomed ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-            )}
-          </button> */}
-                <button
-            onClick={handleAccept}
+          <button
+            onClick={handleClose}
             title="ปิด"
             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
           >
-               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -176,17 +171,28 @@ export default function TermsModal({ user }) {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-6 py-4 border-t border-slate-200 bg-white flex items-center justify-between gap-4">
-          <p className="text-xs text-slate-500 leading-relaxed flex-1">
-            การใช้งานระบบนี้ถือว่าท่านได้อ่านและยอมรับเงื่อนไขการใช้งานทั้งหมดแล้ว
-          </p>
-          <button
-            onClick={handleAccept}
-            className="flex-shrink-0 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-colors shadow-sm"
-          >
-            รับทราบและยอมรับ
-          </button>
-        </div>
+        {!readOnly ? (
+          <div className="flex-shrink-0 px-6 py-4 border-t border-slate-200 bg-white flex items-center justify-between gap-4">
+            <p className="text-xs text-slate-500 leading-relaxed flex-1">
+              การใช้งานระบบนี้ถือว่าท่านได้อ่านและยอมรับเงื่อนไขการใช้งานทั้งหมดแล้ว
+            </p>
+            <button
+              onClick={handleAccept}
+              className="flex-shrink-0 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-colors shadow-sm"
+            >
+              รับทราบและยอมรับ
+            </button>
+          </div>
+        ) : (
+          <div className="flex-shrink-0 px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+            <button
+              onClick={handleClose}
+              className="flex-shrink-0 px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-semibold text-sm transition-colors shadow-sm"
+            >
+              ปิด
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -456,7 +456,9 @@ export default function HomeColumns() {
   useEffect(() => {
     let abort = false
     api.get('/api/home/data')
-      .then(r => { if (!abort) setGroups(r.data?.groups || []) })
+      .then(r => { if (!abort) setGroups(r.data?.groups || [])
+        console.log('Fetched home groups:', r.data?.groups || [])
+       })
       .catch(e => { if (!abort) setError(e.response?.data?.error || 'โหลดข้อมูลไม่สำเร็จ') })
       .finally(() => { if (!abort) setLoading(false) })
     return () => { abort = true }

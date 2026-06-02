@@ -183,6 +183,7 @@ export default function PublicLayout({ children }) {
   const location = useLocation()
   const [searchQ, setSearchQ] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
 
   const handleSearch = useCallback((e) => {
     e.preventDefault()
@@ -196,6 +197,16 @@ export default function PublicLayout({ children }) {
     <div className="min-h-screen app-shell flex">
       {/* Terms of Use Modal — แสดงครั้งแรกหลัง login ต่อ session */}
       <TermsModal user={user} />
+
+      {/* About Modal (Read-only version) */}
+      {showAbout && (
+        <TermsModal
+          user={user}
+          forceShow={true}
+          readOnly={true}
+          onClose={() => setShowAbout(false)}
+        />
+      )}
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -394,6 +405,19 @@ export default function PublicLayout({ children }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
             </Link>
+
+            {/* About / Info shortcut */}
+            <button
+              type="button"
+              onClick={() => setShowAbout(true)}
+              className="flex flex-shrink-0 w-12 h-12 items-center justify-center text-slate-500 hover:text-brand hover:bg-slate-100 active:bg-slate-200 rounded-xl transition-colors"
+              title="เกี่ยวกับระบบ (About)"
+              aria-label="เกี่ยวกับระบบ"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           </div>
         </header>
 

@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import PublicLayout from "../layouts/PublicLayout";
 import Spinner from "../components/ui/Spinner";
+import { getApiBaseUrl } from "../services/axios";
 
 function isPdfMime(ct) {
   return ct === "application/pdf" || ct?.startsWith("application/pdf");
@@ -37,7 +38,7 @@ export default function PortalFilePage() {
   const fileName = stateFile?.FileName || `File #${fileId}`;
 
   useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_URL || "";
+    const apiBase = getApiBaseUrl();
     const fileUrl = `${apiBase}/api/portal/files/${fileId}`;
     const credentials = sessionStorage.getItem("km_credentials");
     const headers = credentials

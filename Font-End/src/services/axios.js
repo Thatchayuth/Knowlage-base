@@ -1,7 +1,22 @@
 import axios from 'axios'
 
+export const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    
+    // If we are running on a real server, but the build environment URL is localhost or empty
+    if (!isLocalhost && (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+      // Dynamic fallback: Use the same server protocol and host, but target port 3000 (backend port)
+      return `${window.location.protocol}//${hostname}:5203`;
+    }
+  }
+  return envUrl || '';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: getApiBaseUrl(),
   timeout: 60000,   // 60s general; sync calls override per-request
   withCredentials: true,
   headers: {
