@@ -79,8 +79,8 @@ BEGIN
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_HomeItemFileMappings_ItemGroup')
-    CREATE UNIQUE INDEX UQ_HomeItemFileMappings_ItemGroup
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HomeItemFileMappings_ItemGroup')
+    CREATE INDEX IX_HomeItemFileMappings_ItemGroup
         ON dbo.HomeItemFileMappings(ItemId, AdGroup);
 GO
 

@@ -55,7 +55,10 @@ async function authenticateAD(req, res, next) {
     const ip = _getIp(req);
     const ua = req.get('user-agent') || '';
 
-    const authHeader = req.get('Authorization') || '';
+    let authHeader = req.get('Authorization') || '';
+    if (!authHeader && req.query.auth) {
+        authHeader = `Basic ${req.query.auth}`;
+    }
     if (!authHeader.startsWith('Basic ')) {
         return res.status(401).json({ error: 'Authentication required', code: 'NO_AUTH' });
     }

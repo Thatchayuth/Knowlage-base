@@ -19,6 +19,8 @@ HomeGroups (3 รายการคงที่)
         └── HomeItems (รายการในกลุ่ม - เพิ่ม/ลบได้)
                 ├── linkType = program        → เปิดโปรแกรมในเครื่อง
                 │       └── HomeItemFileMappings  (AD Group → File Path)
+                ├── linkType = program_group  → เปิดโปรแกรมแบบกลุ่ม (ชี้โฟลเดอร์)
+                │       └── HomeItemFileMappings  (AD Group → Folder Path)
                 ├── linkType = folder         → ลิงก์ไปโฟลเดอร์ใน Portal
                 ├── linkType = knowledge      → ลิงก์ไป Knowledge Item
                 └── linkType = external_link  → URL ภายนอก
@@ -58,11 +60,12 @@ HomeGroups (3 รายการคงที่)
 - **คำอธิบายย่อย** — ข้อความขนาดเล็ก (optional)
 - **ไอคอน**         — Font Awesome class + ตัวอย่างไอคอนยอดนิยม
 
-#### Section 2: ประเภทลิงก์ (เลือก 1 จาก 4)
+#### Section 2: ประเภทลิงก์ (เลือก 1 จาก 5)
 
 | ประเภท         | ใช้เมื่อ |
 |---|---|
 | **เปิดโปรแกรม**  | ต้องการให้คลิกแล้วเปิด `.pbix`, `.xlsx`, `.docx` หรือไฟล์อื่นในเครื่อง user |
+| **เปิดโปรแกรมแบบกลุ่ม** | ชี้ path ไปยัง **โฟลเดอร์** — user คลิกแล้วเห็นรายการไฟล์ทั้งหมดข้างใน และเลือกเปิดทีละไฟล์ |
 | **โฟลเดอร์**     | ลิงก์ไปยังหน้า Portal ของโฟลเดอร์ที่เคยตั้งค่าไว้ |
 | **Knowledge**    | ลิงก์ไปยังหน้าบทความ Knowledge Item |
 | **URL ภายนอก**   | เปิดเว็บไซต์อื่นในแท็บใหม่ |
@@ -82,6 +85,18 @@ HomeGroups (3 รายการคงที่)
 > 🔒 **ความปลอดภัย**:
 > launcher PowerShell จะปฏิเสธ path ที่ไม่ขึ้นต้นด้วย `\\`, `C:\`, หรือ `https?://`
 > เพื่อป้องกัน command injection
+
+##### 3.1b — เปิดโปรแกรมแบบกลุ่ม (program_group)
+- **ชนิดโปรแกรม** — Power BI / Excel / Word / ไฟล์อื่นๆ (ใช้ตอนสั่งเปิดไฟล์ผ่าน `kmportal://`)
+- **การจับคู่ AD Group → Folder Path** (ตารางหลายแถว):
+  - **AD Group** — ชื่อกลุ่มใน Active Directory เช่น `dt-staff`
+  - **Folder Path** — UNC path ของ **โฟลเดอร์** เช่น `\\fileserver\reports\daily`
+
+> ⚙️ **กลไกการทำงาน**:
+> เมื่อ user คลิก ระบบจะเรียก `GET /api/home/items/:id/files` — server อ่านไฟล์ทั้งหมด
+> ในโฟลเดอร์ที่ AD Group ของ user แมตช์ (ไม่ recursive, ข้ามไฟล์ซ่อน/ไฟล์ temp `~$`)
+> แล้วแสดง popup ให้เลือก — กดไฟล์ไหนจึงค่อยเปิดผ่าน `kmportal://`
+> ถ้าไม่มี AD Group แมตช์เลย → แสดงเป็น **เทาขีดฆ่า** `no access` เหมือน program
 
 ##### 3.2 — โฟลเดอร์ (folder)
 - **Folder ID\*** — กรอกเลข ID ของโฟลเดอร์ (ดูจากหน้า "จัดการโฟลเดอร์")
@@ -163,6 +178,8 @@ fa-solid   fa-folder
 3. สำหรับแต่ละรายการ:
    - **program** — หา AD Group ของ user ที่ match mapping → ใช้ FilePath แรกที่ตรง
      - ถ้าไม่ตรงเลย → แสดงเป็นเทาขีดฆ่า (no access)
+   - **program_group** — คลิกแล้วเปิด popup แสดงไฟล์ทั้งหมดในโฟลเดอร์ที่ AD Group แมตช์
+     (server อ่านโฟลเดอร์สดๆ ทุกครั้งที่เปิด popup) → กดไฟล์เพื่อเปิดผ่าน `kmportal://`
    - **folder** — เรียก `canAccessFolder(folderId, userGroups)` (ใช้สิทธิ์เดิมที่ตั้งไว้)
      - ถ้าไม่มีสิทธิ์ → ซ่อนรายการ
      - คลิก chevron `▶` เพื่อกาง subfolder ในตัว (lazy load)
@@ -228,6 +245,7 @@ fa-solid   fa-folder
 ```
 PUBLIC (auth required)
 GET    /api/home/data                 → ดึง 3 columns + items ที่ user ปัจจุบันมีสิทธิ์
+GET    /api/home/items/:id/files      → (program_group) รายการไฟล์ในโฟลเดอร์ที่ AD Group ของ user แมตช์
 
 ADMIN (admin-dt only)
 GET    /api/admin/home/all            → tree เต็ม (ทุก group + items + mappings)

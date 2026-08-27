@@ -141,14 +141,22 @@ function MenuKnowledgeItem({ item, activeId }) {
   )
 }
 
-// --- Greeting/clock helpers for 24/7 operation (moved from HomePage) ---
 function getGreeting(h) {
-  if (h >= 5  && h < 11) return { th: 'สวัสดีตอนเช้า',  sub: 'Good morning',   shift: 'กะเช้า',  icon: '🌅' }
-  if (h >= 11 && h < 13) return { th: 'สวัสดีตอนเที่ยง', sub: 'Good noon',      shift: 'กะเช้า',  icon: '☀️' }
-  if (h >= 13 && h < 17) return { th: 'สวัสดีตอนบ่าย',   sub: 'Good afternoon', shift: 'กะบ่าย',  icon: '🌤️' }
-  if (h >= 17 && h < 20) return { th: 'สวัสดีตอนเย็น',   sub: 'Good evening',   shift: 'กะบ่าย',  icon: '🌆' }
-  if (h >= 20 && h < 24) return { th: 'สวัสดีตอนค่ำ',    sub: 'Good night',     shift: 'กะดึก',   icon: '🌙' }
-  return                       { th: 'สวัสดีตอนดึก',    sub: 'Late night shift', shift: 'กะดึก', icon: '🌃' }
+  // กะเช้า: 08:00 - 20:00 (h >= 8 && h < 20)
+  if (h >= 8 && h < 20) {
+    if (h < 12) return { th: 'สวัสดีตอนเช้า',  sub: 'Good morning',   shift: 'กะเช้า',  icon: '🌅' }
+    if (h < 13) return { th: 'สวัสดีตอนเที่ยง', sub: 'Good noon',      shift: 'กะเช้า',  icon: '☀️' }
+    if (h < 17) return { th: 'สวัสดีตอนบ่าย',   sub: 'Good afternoon', shift: 'กะเช้า',  icon: '🌤️' }
+    return             { th: 'สวัสดีตอนเย็น',   sub: 'Good evening',   shift: 'กะเช้า',  icon: '🌆' }
+  }
+  // กะดึก: 20:00 - 08:00 (h >= 20 || h < 8)
+  if (h >= 20 && h < 24) {
+    return             { th: 'สวัสดีตอนค่ำ',    sub: 'Good night',     shift: 'กะดึก',   icon: '🌙' }
+  }
+  if (h >= 5 && h < 8) {
+    return             { th: 'สวัสดีตอนเช้าตรู่', sub: 'Early morning',   shift: 'กะดึก',   icon: '🌅' }
+  }
+  return               { th: 'สวัสดีตอนดึก',    sub: 'Late night shift', shift: 'กะดึก',   icon: '🌃' }
 }
 
 const THAI_DAYS   = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -279,9 +287,9 @@ export default function PublicLayout({ children }) {
           {!loading && !error && menu.map(item => (
             <MenuLevel1 key={item.id} item={item} activeId={id} />
           ))}
-          {!loading && !error && menu.length === 0 && (
+          {/* {!loading && !error && menu.length === 0 && (
             <p className="p-4 text-base text-slate-500">No categories found.</p>
-          )}
+          )} */}
         </div>
 
         {/* Footer links */}
@@ -410,13 +418,14 @@ export default function PublicLayout({ children }) {
             <button
               type="button"
               onClick={() => setShowAbout(true)}
-              className="flex flex-shrink-0 w-12 h-12 items-center justify-center text-slate-500 hover:text-brand hover:bg-slate-100 active:bg-slate-200 rounded-xl transition-colors"
+              className="flex flex-shrink-0 h-12 px-4 items-center justify-center gap-2 text-slate-500 hover:text-brand hover:bg-slate-100 hover:border-slate-300 active:bg-slate-200 border border-slate-200 rounded-full transition-all font-display font-medium text-base shadow-sm"
               title="เกี่ยวกับระบบ (About)"
               aria-label="เกี่ยวกับระบบ"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
+              <span>Info</span>
             </button>
           </div>
         </header>

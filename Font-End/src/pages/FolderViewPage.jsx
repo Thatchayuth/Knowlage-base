@@ -17,6 +17,7 @@ import { getFolderChildren }            from '../services/portal.service';
 import FolderCard                       from '../components/portal/FolderCard';
 import FileList                         from '../components/portal/FileList';
 import { getApiBaseUrl }                from '../services/axios';
+import Spinner                          from '../components/ui/Spinner';
 
 // ── helpers ──────────────────────────────────────────────────
 
@@ -59,6 +60,7 @@ export default function FolderViewPage() {
   const [childLoad,  setChildLoad]  = useState(false);
   const [breadcrumb, setBreadcrumb] = useState([{ id: null, label: 'Portal' }]);
   const [viewing,    setViewing]    = useState(null); // { file, type: 'pdf'|'video'|'excel', url?, sheets?, activeSheet? }
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   // Load children
   useEffect(() => {
@@ -87,6 +89,12 @@ export default function FolderViewPage() {
     setBreadcrumb(crumbs);
   }, [tree, folderId]);
 
+  const credentials = sessionStorage.getItem('km_credentials');
+  const fileIdForViewing = viewing?.file?.Id;
+  const newTabUrl = credentials && fileIdForViewing
+    ? `${getApiBaseUrl()}/api/portal/files/${fileIdForViewing}?auth=${encodeURIComponent(credentials)}`
+    : viewing?.url;
+
   const handleSelectFolder = (folder) => navigate(`/portal/${folder.Id}`);
 
   const handleOpenFile = (file) => {
@@ -100,7 +108,16 @@ export default function FolderViewPage() {
     const credentials = sessionStorage.getItem('km_credentials');
     const headers = credentials ? { Authorization: `Basic ${credentials}` } : {};
 
-    if (isPdf(file) || isVideo(file)) {
+    if (isPdf(file)) {
+      const authUrl = credentials
+        ? `${fileUrl}?auth=${encodeURIComponent(credentials)}`
+        : fileUrl;
+      setIframeLoading(true);
+      setViewing({ file, type: 'pdf', url: authUrl, fileUrl });
+      return;
+    }
+
+    if (isVideo(file)) {
       // Fetch as blob then create object URL so auth header is sent
       fetch(fileUrl, { headers })
         .then(r => {
@@ -109,7 +126,7 @@ export default function FolderViewPage() {
         })
         .then(blob => {
           const objUrl = URL.createObjectURL(blob);
-          setViewing({ file, type: isPdf(file) ? 'pdf' : 'video', url: objUrl, fileUrl });
+          setViewing({ file, type: 'video', url: objUrl, fileUrl });
         })
         .catch(err => alert(`ไม่สามารถเปิดไฟล์ได้: ${err.message}`));
       return;
@@ -201,17 +218,19 @@ export default function FolderViewPage() {
                   <span className="font-mono text-sm text-brand">{viewing.file.FileName}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href={viewing.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-secondary text-xs py-1.5"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    Open in new tab
-                  </a>
+                  {viewing.type !== 'video' && (
+                    <a
+                      href={newTabUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary text-xs py-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Open in new tab
+                    </a>
+                  )}
                   <button
                     onClick={() => {
                       if (viewing?.url?.startsWith('blob:')) URL.revokeObjectURL(viewing.url);
@@ -250,6 +269,7 @@ export default function FolderViewPage() {
                 ) : (
                   <video
                     controls
+                    autoPlay
                     src={embed?.src}
                     className="w-full"
                     style={{ maxHeight: '75vh' }}

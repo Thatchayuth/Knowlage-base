@@ -5,47 +5,21 @@ import { useAuth } from "../context/AuthContext";
 
 // Greeting for 24/7 shift operation
 function getGreeting(h) {
-  if (h >= 5 && h < 11)
-    return {
-      th: "สวัสดีตอนเช้า",
-      sub: "Good morning",
-      shift: "กะเช้า",
-      icon: "🌅",
-    };
-  if (h >= 11 && h < 13)
-    return {
-      th: "สวัสดีตอนเที่ยง",
-      sub: "Good noon",
-      shift: "กะเช้า",
-      icon: "☀️",
-    };
-  if (h >= 13 && h < 17)
-    return {
-      th: "สวัสดีตอนบ่าย",
-      sub: "Good afternoon",
-      shift: "กะบ่าย",
-      icon: "🌤️",
-    };
-  if (h >= 17 && h < 20)
-    return {
-      th: "สวัสดีตอนเย็น",
-      sub: "Good evening",
-      shift: "กะบ่าย",
-      icon: "🌆",
-    };
-  if (h >= 20 && h < 24)
-    return {
-      th: "สวัสดีตอนค่ำ",
-      sub: "Good night",
-      shift: "กะดึก",
-      icon: "🌙",
-    };
-  return {
-    th: "สวัสดีตอนดึก",
-    sub: "Late night shift",
-    shift: "กะดึก",
-    icon: "🌃",
-  };
+  // กะเช้า: 08:00 - 20:00 (h >= 8 && h < 20)
+  if (h >= 8 && h < 20) {
+    if (h < 12) return { th: 'สวัสดีตอนเช้า',  sub: 'Good morning',   shift: 'กะเช้า',  icon: '🌅' }
+    if (h < 13) return { th: 'สวัสดีตอนเที่ยง', sub: 'Good noon',      shift: 'กะเช้า',  icon: '☀️' }
+    if (h < 17) return { th: 'สวัสดีตอนบ่าย',   sub: 'Good afternoon', shift: 'กะเช้า',  icon: '🌤️' }
+    return             { th: 'สวัสดีตอนเย็น',   sub: 'Good evening',   shift: 'กะเช้า',  icon: '🌆' }
+  }
+  // กะดึก: 20:00 - 08:00 (h >= 20 || h < 8)
+  if (h >= 20 && h < 24) {
+    return             { th: 'สวัสดีตอนค่ำ',    sub: 'Good night',     shift: 'กะดึก',   icon: '🌙' }
+  }
+  if (h >= 5 && h < 8) {
+    return             { th: 'สวัสดีตอนเช้าตรู่', sub: 'Early morning',   shift: 'กะดึก',   icon: '🌅' }
+  }
+  return               { th: 'สวัสดีตอนดึก',    sub: 'Late night shift', shift: 'กะดึก',   icon: '🌃' }
 }
 
 const THAI_DAYS = [

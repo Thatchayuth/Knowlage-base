@@ -47,6 +47,7 @@ const ICON_PRESETS = [
 
 const LINK_TYPES = [
   { value: 'program',       label: 'เปิดโปรแกรม',  icon: 'fa-solid fa-circle-play',           hint: 'ใช้ kmportal:// เปิดโปรแกรมในเครื่อง user' },
+  { value: 'program_group', label: 'เปิดโปรแกรมแบบกลุ่ม', icon: 'fa-solid fa-layer-group',   hint: 'ชี้ path ไปยังโฟลเดอร์ — เมื่อคลิกจะแสดงไฟล์ทั้งหมดข้างในให้ user เลือกเปิด' },
   { value: 'folder',        label: 'โฟลเดอร์',      icon: 'fa-solid fa-folder',                 hint: 'ลิงก์ไปยังโฟลเดอร์ใน Portal' },
   { value: 'knowledge',     label: 'Knowledge',     icon: 'fa-solid fa-book',                   hint: 'ลิงก์ไปยังหน้า Knowledge Item' },
   { value: 'external_link', label: 'URL ภายนอก',    icon: 'fa-solid fa-arrow-up-right-from-square', hint: 'เปิดเว็บไซต์ภายนอก (เปิดแท็บใหม่)' },
@@ -459,13 +460,15 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
         subtitle: subtitle.trim() || null,
         icon: icon.trim() || null,
         linkType,
-        programType: linkType === 'program' ? programType : null,
+        programType: (linkType === 'program' || linkType === 'program_group') ? programType : null,
         folderId:    linkType === 'folder' ? Number(folderId) || null : null,
         knowledgeId: linkType === 'knowledge' ? Number(knowledgeId) || null : null,
         externalUrl: linkType === 'external_link' ? externalUrl.trim() : null,
         sortOrder: Number(sortOrder) || 0,
         isEnabled: enabled,
-        mappings: linkType === 'program' ? mappings.filter(m => m.adGroup && m.filePath) : [],
+        mappings: (linkType === 'program' || linkType === 'program_group')
+          ? mappings.filter(m => m.adGroup && m.filePath)
+          : [],
       }
       if (isEdit) await api.put(`/api/admin/home/items/${initial.Id}`, payload)
       else        await api.post('/api/admin/home/items', payload)
@@ -526,7 +529,7 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
               <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-[11px] flex items-center justify-center font-display">2</span>
               ประเภทลิงก์
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {LINK_TYPES.map(t => (
                 <button
                   key={t.value}
@@ -552,7 +555,7 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
               ตั้งค่ารายละเอียด
             </h4>
 
-            {linkType === 'program' && (
+            {(linkType === 'program' || linkType === 'program_group') && (
               <div className="space-y-4 p-4 bg-navy-50 rounded-xl border border-navy-100">
                 <div>
                   <span className="font-semibold text-sm text-steel-700">ชนิดโปรแกรม</span>
@@ -569,8 +572,14 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <span className="font-semibold text-sm text-steel-700">การจับคู่ AD Group → File Path</span>
-                      <p className="text-xs text-steel-500">ผู้ใช้ในกลุ่มที่ตรงกันจะเปิดไฟล์ที่กำหนด (ใช้รายการแรกที่ตรง)</p>
+                      <span className="font-semibold text-sm text-steel-700">
+                        {linkType === 'program_group' ? 'การจับคู่ AD Group → Folder Path' : 'การจับคู่ AD Group → File Path'}
+                      </span>
+                      <p className="text-xs text-steel-500">
+                        {linkType === 'program_group'
+                          ? 'ชี้ path ไปยังโฟลเดอร์ — เมื่อ user คลิก ระบบจะแสดงไฟล์ทั้งหมดในโฟลเดอร์ให้เลือกเปิด'
+                          : 'ผู้ใช้ในกลุ่มที่ตรงกันจะเปิดไฟล์ที่กำหนด (ใช้รายการแรกที่ตรง)'}
+                      </p>
                     </div>
                     <button type="button" onClick={addMapping}
                       className="px-3 py-1.5 text-xs rounded-xl bg-brand hover:bg-navy-800 text-white font-medium shadow-sm transition">
@@ -594,7 +603,7 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
                           </div>
                           <div className="col-span-7">
                             <input className="input-field text-xs font-mono"
-                              placeholder="\\server\share\file.pbix"
+                              placeholder={linkType === 'program_group' ? '\\\\server\\share\\reports-folder' : '\\\\server\\share\\file.pbix'}
                               value={m.filePath}
                               onChange={e => updateMapping(i, 'filePath', e.target.value)} />
                           </div>
@@ -728,6 +737,7 @@ function ItemsList({ items, onEdit, onDelete }) {
             </div>
             <div className="text-xs text-steel-500 truncate mt-0.5">
               {it.LinkType === 'program' && `${it.ProgramType || ''} · ${it.Mappings?.length || 0} mappings`}
+              {it.LinkType === 'program_group' && `${it.ProgramType || ''} · ${it.Mappings?.length || 0} folders`}
               {it.LinkType === 'folder' && `Folder #${it.FolderId}`}
               {it.LinkType === 'knowledge' && `Knowledge #${it.KnowledgeId}`}
               {it.LinkType === 'external_link' && it.ExternalUrl}

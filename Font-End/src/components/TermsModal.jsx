@@ -4,7 +4,7 @@ import api from '../services/axios'
 const STORAGE_KEY = 'km_terms_accepted'
 
 /**
- * TermsModal — แสดง popup เงื่อนไขการใช้งานเป็นรูปภาพหลัง login
+ * TermsModal — แสดง popup เรียนรู้การใช้งานระบบเป็นรูปภาพหลัง login
  * - อ่านรูปจาก GET /api/settings/terms-image
  * - ถ้า terms_image_enabled = false หรือไม่มีรูป → ไม่แสดง
  * - กด "รับทราบและยอมรับ" → บันทึก sessionStorage → ปิด modal
@@ -122,10 +122,10 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2"
       style={{ backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
     >
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
             </div>
             <div>
               <h2 className="font-display font-bold text-slate-800 text-base leading-tight">
-                {readOnly ? 'ข้อมูลเกี่ยวกับระบบ (About)' : 'เงื่อนไขการใช้งาน'}
+                {readOnly ? 'ข้อมูลเกี่ยวกับระบบ (About)' : 'เรียนรู้การใช้งานระบบ'}
               </h2>
               <p className="text-xs text-slate-500">
                 {readOnly ? 'นโยบายและแนวทางการใช้งานระบบ' : 'กรุณาอ่านและยอมรับก่อนใช้งานระบบ'}
@@ -156,13 +156,13 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
         </div>
 
         {/* Image area */}
-        <div className={`flex-1 overflow-auto bg-slate-100 flex items-start justify-center ${zoomed ? 'p-0' : 'p-4'}`}>
+        <div className={`flex-1 overflow-hidden bg-slate-100 flex items-center justify-center ${zoomed ? 'p-0' : 'p-2'}`}>
           <img
             src={imgSrc}
-            alt="เงื่อนไขการใช้งาน"
-            className={`rounded-lg shadow-sm select-none transition-all duration-200 ${
+            alt="เรียนรู้การใช้งานระบบ"
+            className={`select-none transition-all duration-200 ${
               !zoomed
-                ? 'w-full h-auto rounded-none shadow-none'
+                ? 'max-w-full max-h-[calc(88vh-160px)] object-contain shadow-none'
                 : 'max-w-full h-auto cursor-zoom-in'
             }`}
             onClick={() => zoomed && setZoomed(true)}
@@ -174,7 +174,7 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
         {!readOnly ? (
           <div className="flex-shrink-0 px-6 py-4 border-t border-slate-200 bg-white flex items-center justify-between gap-4">
             <p className="text-xs text-slate-500 leading-relaxed flex-1">
-              การใช้งานระบบนี้ถือว่าท่านได้อ่านและยอมรับเงื่อนไขการใช้งานทั้งหมดแล้ว
+              การใช้งานระบบนี้ถือว่าท่านได้อ่านและยอมรับเรียนรู้การใช้งานระบบทั้งหมดแล้ว
             </p>
             <button
               onClick={handleAccept}

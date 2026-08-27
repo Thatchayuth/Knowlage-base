@@ -22,23 +22,47 @@ const homeRoutes                          = require('./routes/home');
 const { getPool, closePool }              = require('./config/database');
 
 const app  = express();
-const PORT = parseInt(process.env.PORT, 10) || 3000;
+const PORT = process.env.PORT || 5203;
 
 const cors = require('cors');
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.105:5173,http://192.168.8.120:4200,http://192.168.8.120:8000'; 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.105:5173,http://192.168.8.120:4200,http://192.168.8.120:8000';
-// || 'http://localhost:5173' 
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173,http://10.10.0.105:5173,http://192.168.8.120:4200,http://192.168.8.120:8000';
+
 // CORS: allow front-end dev server and production origin (from env)
-app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
+const corsOptionsDelegate = (req, callback) => {
+    const origin = req.header('Origin');
+    let isAllowed = false;
+    
+    if (!origin) {
+        isAllowed = true;
+    } else {
         const allowed = String(CORS_ORIGIN).split(',').map(s => s.trim());
-        if (allowed.includes('*') || allowed.includes(origin)) return callback(null, true);
-        return callback(new Error('Not allowed by CORS'))
-    },
-    credentials: true,
-    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization','X-Requested-With','X-Auth-User','X-Remote-User']
-}));
+        if (allowed.includes('*') || allowed.includes(origin)) {
+            isAllowed = true;
+        } else {
+            // Dynamic check: Allow if origin hostname matches the server's request hostname (same server, different ports)
+            try {
+                const originUrl = new URL(origin);
+                const hostHeader = req.header('host') || '';
+                const serverHostname = hostHeader.split(':')[0];
+                if (originUrl.hostname === serverHostname || originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
+                    isAllowed = true;
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+    }
+    
+    callback(null, {
+        origin: isAllowed,
+        credentials: true,
+        methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+        allowedHeaders: ['Content-Type','Authorization','X-Requested-With','X-Auth-User','X-Remote-User','Range'],
+        exposedHeaders: ['Content-Length', 'Content-Disposition']
+    });
+};
+
+app.use(cors(corsOptionsDelegate));
 
 // ============================================================
 // Trust internal proxy headers
@@ -75,6 +99,8 @@ app.use(helmet({
     noSniff:                true,
     xssFilter:              true,
     frameguard:             { action: 'deny' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
 }));
 
 // ============================================================
@@ -171,10 +197,13 @@ async function start() {
         await getPool();
         logger.info({ actionType: 'ERROR_SYSTEM', message: 'Database pool initialized' });
 
-        const server = app.listen(PORT, '0.0.0.0', () => {
+        const isPipe = isNaN(PORT);
+        const listenArgs = isPipe ? [PORT] : [parseInt(PORT, 10) || 3000, '0.0.0.0'];
+
+        const server = app.listen(...listenArgs, () => {
             logger.info({
                 actionType: 'ERROR_SYSTEM',
-                message:    `Knowledge Management System started on port ${PORT} [${process.env.NODE_ENV || 'production'}]`,
+                message:    `Knowledge Management System started on ${isPipe ? 'pipe ' + PORT : 'port ' + PORT} [${process.env.NODE_ENV || 'production'}]`,
             });
         });
 
@@ -266,4 +295,6 @@ async function start() {
 start();
 
 module.exports = app;
+
+// Touched to reload iisnode and apply controller changes
 

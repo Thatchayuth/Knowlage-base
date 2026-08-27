@@ -15,12 +15,18 @@
  *   - For `external_link` items: include URL.
  */
 
+const fsp  = require('fs').promises;
+const path = require('path');
+
 const homeRepo     = require('../repositories/home.repository');
 const folderRepo   = require('../repositories/folder.repository');
 const folderService = require('./folder.service');
 const cache        = require('./cache.service');
 
 const { sql, getPool } = require('../config/database');
+
+// Same rule as the kmportal launcher: only UNC or absolute drive paths.
+const SAFE_DIR_RE = /^(\\\\|[A-Za-z]:\\)/;
 
 const HOME_TTL_MS = 60 * 1000; // 1 min cache (admin edits invalidate)
 
@@ -102,8 +108,10 @@ async function getHomeForUser(userGroups = []) {
         allItems.push(...items);
     }
 
-    // Bulk fetch mappings
-    const programItemIds = allItems.filter(it => it.LinkType === 'program').map(it => it.Id);
+    // Bulk fetch mappings (program: AD group → file, program_group: AD group → folder)
+    const programItemIds = allItems
+        .filter(it => it.LinkType === 'program' || it.LinkType === 'program_group')
+        .map(it => it.Id);
     const mappingsMap = await homeRepo.getMappingsForItems(programItemIds);
 
     // Folder summaries
@@ -133,14 +141,33 @@ async function getHomeForUser(userGroups = []) {
 
             if (it.LinkType === 'program') {
                 const mappings = mappingsMap.get(it.Id) || [];
-                const filePath = isAdminAll && mappings[0]
-                    ? mappings[0].FilePath
-                    : _resolveFilePathForUser(mappings, userGroupsLower);
+                const matchedMappings = isAdminAll
+                    ? mappings
+                    : mappings.filter(m => userGroupsLower.includes(String(m.AdGroup).toLowerCase().trim()));
+                const filePath = matchedMappings[0]?.FilePath || null;
                 out.push({
                     ...base,
                     programType: it.ProgramType || 'file',
                     filePath,                    // null = no access
-                    hasAccess:   !!filePath,
+                    filePaths: matchedMappings.map(m => ({
+                        adGroup: m.AdGroup,
+                        filePath: m.FilePath
+                    })),
+                    hasAccess:   matchedMappings.length > 0,
+                });
+            } else if (it.LinkType === 'program_group') {
+                const mappings = mappingsMap.get(it.Id) || [];
+                const matchedMappings = isAdminAll
+                    ? mappings
+                    : mappings.filter(m => userGroupsLower.includes(String(m.AdGroup).toLowerCase().trim()));
+                out.push({
+                    ...base,
+                    programType: it.ProgramType || 'file',
+                    folderPaths: matchedMappings.map(m => ({
+                        adGroup:    m.AdGroup,
+                        folderPath: m.FilePath,
+                    })),
+                    hasAccess: matchedMappings.length > 0,
                 });
             } else if (it.LinkType === 'folder') {
                 console.log(`Processing folder item ${it.Title} with FolderId ${it.FolderId}`);
@@ -194,6 +221,82 @@ async function getHomeForUser(userGroups = []) {
     return { groups: result };
 }
 
+/**
+ * List files inside the folder(s) mapped to a `program_group` item,
+ * restricted to folders whose AdGroup matches the current user.
+ *
+ * @param {number}   itemId
+ * @param {string[]} userGroups raw AD group names ('*' = admin sees all)
+ * @returns {Promise<{ files: Array, folders: Array }>}
+ * @throws  Error with .code = 'NOT_FOUND' | 'FORBIDDEN'
+ */
+async function getProgramGroupFiles(itemId, userGroups = []) {
+    const item = await homeRepo.getItemById(itemId);
+    if (!item || item.LinkType !== 'program_group' || !item.IsEnabled) {
+        const err = new Error('Item not found');
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+
+    const userGroupsLower = _normalizeGroups(userGroups);
+    const isAdminAll = userGroups.includes('*');
+    const mappings = await homeRepo.getMappingsByItem(itemId);
+    const matched = isAdminAll
+        ? mappings
+        : mappings.filter(m => userGroupsLower.includes(String(m.AdGroup).toLowerCase().trim()));
+
+    if (!matched.length) {
+        const err = new Error('No access to this item');
+        err.code = 'FORBIDDEN';
+        throw err;
+    }
+
+    const files = [];
+    const folders = [];
+    const seenPaths = new Set(); // dedupe when several AD groups map to the same folder
+
+    for (const m of matched) {
+        const folderPath = String(m.FilePath || '').trim();
+        const key = folderPath.toLowerCase();
+        if (seenPaths.has(key)) continue;
+        seenPaths.add(key);
+
+        if (!SAFE_DIR_RE.test(folderPath)) {
+            folders.push({ adGroup: m.AdGroup, folderPath, error: 'invalid path' });
+            continue;
+        }
+
+        try {
+            const entries = await fsp.readdir(folderPath, { withFileTypes: true });
+            let count = 0;
+            for (const entry of entries) {
+                if (!entry.isFile()) continue;
+                if (entry.name.startsWith('.'))  continue; // hidden
+                if (entry.name.startsWith('~$')) continue; // Office temp files
+                files.push({
+                    fileName:   entry.name,
+                    filePath:   path.win32.join(folderPath, entry.name),
+                    adGroup:    m.AdGroup,
+                    folderPath,
+                });
+                count++;
+            }
+            folders.push({ adGroup: m.AdGroup, folderPath, fileCount: count });
+        } catch (e) {
+            folders.push({ adGroup: m.AdGroup, folderPath, error: 'cannot read folder' });
+        }
+    }
+
+    files.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { numeric: true }));
+    return {
+        itemId:      item.Id,
+        title:       item.Title,
+        programType: item.ProgramType || 'file',
+        files,
+        folders,
+    };
+}
+
 // ──────────────────────────────────────────────────────────────
 // ADMIN — full management
 // ──────────────────────────────────────────────────────────────
@@ -205,7 +308,7 @@ async function getAllForAdmin() {
         const items = await homeRepo.getItemsByGroup(g.Id, true);
         const enriched = [];
         for (const it of items) {
-            const mappings = it.LinkType === 'program'
+            const mappings = (it.LinkType === 'program' || it.LinkType === 'program_group')
                 ? await homeRepo.getMappingsByItem(it.Id)
                 : [];
             enriched.push({
@@ -240,6 +343,7 @@ async function replaceMappings(itemId, mappings) {
 
 module.exports = {
     getHomeForUser,
+    getProgramGroupFiles,
     getAllForAdmin,
     updateGroup,
     createItem,

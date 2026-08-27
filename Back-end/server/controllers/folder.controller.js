@@ -129,10 +129,28 @@ async function serveFile(req, res) {
     const mimeType = fileMeta.MimeType || 'application/octet-stream';
     const fileName = fileMeta.FileName;
     console.log(`Serving file ${fileName} (id=${fileId}, size=${stat.size}, mime=${mimeType}) to ${req.portalUser.username} from IP ${req.ip}`);
-    // PDF — inline
+    // PDF — inline with Range request support (allows progressive/page-by-page rendering in browser PDF viewer)
     if (mimeType === 'application/pdf') {
-      res.setHeader('Content-Type', 'application/pdf');
+      res.removeHeader('X-Frame-Options');
+      res.setHeader('Content-Security-Policy', "frame-ancestors *");
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+      res.setHeader('Accept-Ranges', 'bytes');
+
+      const range = req.headers.range;
+      if (range) {
+        const parts    = range.replace(/bytes=/, '').split('-');
+        const start    = parseInt(parts[0], 10);
+        const end      = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        const chunkLen = end - start + 1;
+        res.writeHead(206, {
+          'Content-Range':  `bytes ${start}-${end}/${stat.size}`,
+          'Content-Length': chunkLen,
+          'Content-Type':   'application/pdf',
+        });
+        return fs.createReadStream(filePath, { start, end }).pipe(res);
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Length', stat.size);
       return fs.createReadStream(filePath).pipe(res);
     }

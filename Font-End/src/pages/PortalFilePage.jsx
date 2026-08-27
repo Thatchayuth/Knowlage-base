@@ -34,8 +34,23 @@ export default function PortalFilePage() {
   const [viewing, setViewing] = useState(null); // { url?, type: 'pdf'|'video'|'excel', sheets?, activeSheet? }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [useBlobFallback, setUseBlobFallback] = useState(false);
+
+  const [prevFileId, setPrevFileId] = useState(fileId);
+  if (fileId !== prevFileId) {
+    setPrevFileId(fileId);
+    setUseBlobFallback(false);
+  }
 
   const fileName = stateFile?.FileName || `File #${fileId}`;
+
+  const apiBase = getApiBaseUrl();
+  const fileUrl = `${apiBase}/api/portal/files/${fileId}`;
+  const credentials = sessionStorage.getItem("km_credentials");
+  const newTabUrl = credentials
+    ? `${fileUrl}?auth=${encodeURIComponent(credentials)}`
+    : fileUrl;
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -46,25 +61,149 @@ export default function PortalFilePage() {
       : {};
 
     let blobUrl = null;
+    let mounted = true;
+
+    // Check if we know it's a video file beforehand
+    const isVid = stateFile && (
+      /\.(mp4|webm|ogg|ogv|avi|wmv|flv|mkv|mov|m4v|3gp|mpg|mpeg)$/i.test(stateFile.FileName) || 
+      String(stateFile.MimeType || "").startsWith("video/")
+    );
+    
+    // Check if it's natively playable
+    const isNativeVid = isVid && (
+      /\.(mp4|webm|ogg|ogv)$/i.test(stateFile.FileName) ||
+      ["video/mp4", "video/webm", "video/ogg"].includes(stateFile.MimeType)
+    );
+
+    const isPdf = stateFile && (
+      /\.pdf$/i.test(stateFile.FileName) || 
+      String(stateFile.MimeType || "").startsWith("application/pdf")
+    );
+
+    // 0. If PDF, stream instantly!
+    if (isPdf && credentials) {
+      const authUrl = `${fileUrl}?auth=${encodeURIComponent(credentials)}`;
+      setViewing({ url: authUrl, type: "pdf" });
+      setLoading(false);
+      return;
+    }
+
+    // 1. If native video, stream instantly! (Only if not falling back to blob)
+    if (isNativeVid && credentials && !useBlobFallback) {
+      const authUrl = `${fileUrl}?auth=${encodeURIComponent(credentials)}`;
+      setViewing({ url: authUrl, type: "video" });
+      setLoading(false);
+      return;
+    }
+
+    // 2. If unsupported video with local path, open externally instantly!
+    if (isVid && !isNativeVid && stateFile?.FullPath) {
+      const url = `kmportal://open?type=${encodeURIComponent(
+        stateFile.MimeType || "video",
+      )}&path=${encodeURIComponent(stateFile.FullPath)}`;
+
+      window.location.href = url;
+
+      setViewing({
+        type: "external",
+        externalUrl: url,
+      });
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
     setViewing(null);
+    setProgress(0);
 
     fetch(fileUrl, { headers })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} – ไม่สามารถเปิดไฟล์ได้`);
-        const ct = r.headers.get("content-type") || "";
-        return r.blob().then((blob) => ({ blob, ct }));
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status} – ไม่สามารถเปิดไฟล์ได้`);
+        
+        const contentLength = response.headers.get("content-length");
+        const ct = response.headers.get("content-type") || "";
+
+        const isNative = /\.(mp4|webm|ogg|ogv)$/i.test(fileName) || 
+                         ct === "video/mp4" || 
+                         ct === "video/webm" || 
+                         ct === "video/ogg";
+
+        if (ct.startsWith("video/") && isNative && credentials && !useBlobFallback) {
+          if (response.body) {
+            try { response.body.cancel(); } catch (e) {}
+          }
+          const authUrl = `${fileUrl}?auth=${encodeURIComponent(credentials)}`;
+          throw { isStreamRedirect: true, authUrl, type: "video" };
+        }
+
+        if (isPdfMime(ct) && credentials) {
+          if (response.body) {
+            try { response.body.cancel(); } catch (e) {}
+          }
+          const authUrl = `${fileUrl}?auth=${encodeURIComponent(credentials)}`;
+          throw { isStreamRedirect: true, authUrl, type: "pdf" };
+        }
+
+        if (!contentLength || !response.body) {
+          const blob = await response.blob();
+          return { blob, ct };
+        }
+
+        const total = parseInt(contentLength, 10);
+        const reader = response.body.getReader();
+        let receivedLength = 0;
+        let chunks = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          chunks.push(value);
+          receivedLength += value.length;
+          
+          if (total > 0 && mounted) {
+            const percent = Math.round((receivedLength / total) * 100);
+            setProgress(percent);
+          }
+        }
+
+        const blob = new Blob(chunks, { type: ct });
+        return { blob, ct };
       })
       .then(async ({ blob, ct }) => {
+        if (!mounted) return;
+
         if (isPdfMime(ct)) {
           blobUrl = URL.createObjectURL(blob);
           setViewing({ url: blobUrl, type: "pdf" });
         } else if (ct.startsWith("video/")) {
           blobUrl = URL.createObjectURL(blob);
-          setViewing({ url: blobUrl, type: "video" });
+          const isNative = /\.(mp4|webm|ogg|ogv)$/i.test(fileName) || 
+                           ct === "video/mp4" || 
+                           ct === "video/webm" || 
+                           ct === "video/ogg";
+          if (isNative) {
+            setViewing({ url: blobUrl, type: "video", isBlobFallback: true });
+          } else {
+            if (stateFile?.FullPath) {
+              const url = `kmportal://open?type=${encodeURIComponent(
+                stateFile.MimeType || ct || "file",
+              )}&path=${encodeURIComponent(stateFile.FullPath)}`;
+
+              window.location.href = url;
+
+              setViewing({
+                type: "external",
+                externalUrl: url,
+                url: blobUrl,
+              });
+            } else {
+              setViewing({ url: blobUrl, type: "unsupported_video" });
+            }
+          }
         } else if (isExcelMime(ct)) {
+          blobUrl = URL.createObjectURL(blob);
           const url = `kmportal://open?type=${encodeURIComponent(
             stateFile?.MimeType || ct || "file",
           )}&path=${encodeURIComponent(stateFile?.FullPath || "")}`;
@@ -74,19 +213,41 @@ export default function PortalFilePage() {
           setViewing({
             type: "external",
             externalUrl: url,
+            url: blobUrl,
           });
         } else {
           blobUrl = URL.createObjectURL(blob);
           setViewing({ url: blobUrl, type: "pdf" });
         }
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (mounted) {
+          if (err && err.isStreamRedirect) {
+            setViewing({ url: err.authUrl, type: err.type || "video" });
+          } else {
+            setError(err.message);
+          }
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     return () => {
+      mounted = false;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [fileId]);
+  }, [fileId, useBlobFallback]);
+
+  const handleDownload = () => {
+    if (!viewing?.url) return;
+    const a = document.createElement("a");
+    a.href = viewing.url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <PublicLayout>
@@ -114,9 +275,21 @@ export default function PortalFilePage() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex flex-col items-center justify-center gap-4 py-24">
+          <div className="flex flex-col items-center justify-center gap-5 py-24">
             <Spinner size="lg" />
-            <p className="text-slate-400 text-sm font-mono">กำลังโหลดไฟล์…</p>
+            <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+              <p className="text-slate-400 text-sm font-mono font-medium">
+                กำลังโหลดไฟล์... {progress > 0 ? `${progress}%` : ''}
+              </p>
+              {progress > 0 && (
+                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800/40 rounded-full overflow-hidden border border-slate-200/50">
+                  <div 
+                    className="h-full bg-blue-600 rounded-full transition-all duration-150 ease-out" 
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -185,9 +358,9 @@ export default function PortalFilePage() {
                 </span>
               </div>
 
-              {viewing.url && (
+              {viewing.url && viewing.type !== "video" && viewing.type !== "unsupported_video" && (
                 <a
-                  href={viewing.url}
+                  href={newTabUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary text-xs py-1.5 flex-shrink-0"
@@ -224,30 +397,84 @@ export default function PortalFilePage() {
             {viewing.type === "video" && (
               <video
                 controls
+                autoPlay
+                crossOrigin="anonymous"
                 src={viewing.url}
                 className="w-full"
                 style={{ maxHeight: "75vh" }}
+                onError={() => {
+                  if (!viewing.isBlobFallback) {
+                    console.log("Streaming failed, falling back to blob...");
+                    setUseBlobFallback(true);
+                  }
+                }}
               />
+            )}
+
+            {/* Unsupported Video */}
+            {viewing.type === "unsupported_video" && (
+              <div className="flex flex-col items-center justify-center py-20 px-6 gap-6 bg-slate-900 text-white rounded-b-2xl border-t border-slate-800">
+                <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-3xl">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                
+                <div className="text-center max-w-md space-y-2">
+                  <h4 className="font-display font-bold text-lg text-slate-100">
+                    เบราว์เซอร์ไม่รองรับการเล่นไฟล์ .avi โดยตรง
+                  </h4>
+                  <p className="text-sm text-slate-400 leading-relaxed">
+                    เนื่องจากข้อจำกัดของเว็บเบราว์เซอร์ในไฟล์รูปแบบ AVI กรุณาดาวน์โหลดไฟล์เพื่อนำไปเปิดด้วยโปรแกรมเล่นสื่อในเครื่องของคุณ (เช่น VLC หรือ Windows Media Player)
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleDownload}
+                  className="btn-primary inline-flex items-center gap-2 px-6 py-3 font-semibold shadow-lg hover:scale-[1.02] transition-all text-sm cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  ดาวน์โหลดไฟล์วิดีโอเพื่อรับชม
+                </button>
+              </div>
             )}
 
             {/* External opener */}
             {viewing.type === "external" && (
-              <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <div className="text-5xl">📂</div>
+              <div className="flex flex-col items-center justify-center py-20 px-6 gap-6 text-white text-center">
+                <div className="text-5xl animate-bounce">📂</div>
 
-                <div className="text-center">
-                  <p className="text-slate-200 font-medium mb-2">
-                    Opening file externally...
+                <div className="space-y-2 max-w-md">
+                  <p className="text-slate-200 font-semibold text-lg">
+                    กำลังเปิดไฟล์ผ่านโปรแกรมภายนอก...
                   </p>
 
-                  <p className="text-slate-400 text-sm">
-                    หากโปรแกรมไม่เปิดอัตโนมัติ กดปุ่มด้านล่าง
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    ระบบพยายามเรียกเปิดโปรแกรมในเครื่องของคุณอัตโนมัติ (เช่น KM Portal หรือโปรแกรมเล่นสื่อสำหรับวิดีโอ) หากเงียบไป หรือไม่มีโปรแกรมในเครื่อง สามารถเลือกใช้ตัวช่วยด้านล่างได้ครับ
                   </p>
                 </div>
 
-                <a href={viewing.externalUrl} className="btn-secondary">
-                  Open File
-                </a>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <a 
+                    href={viewing.externalUrl} 
+                    className="btn-secondary inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm"
+                  >
+                    เปิดไฟล์อีกครั้ง (Retry)
+                  </a>
+                  {viewing.url && (
+                    <button
+                      onClick={handleDownload}
+                      className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      ดาวน์โหลดไฟล์ลงเครื่อง
+                    </button>
+                  )}
+                </div>
               </div>
             )}  
           </div>

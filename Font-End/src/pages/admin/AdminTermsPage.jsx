@@ -90,7 +90,7 @@ export default function AdminTermsPage() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('ยืนยันลบรูปเงื่อนไขการใช้งาน?')) return
+    if (!window.confirm('ยืนยันลบรูปเรียนรู้การใช้งานระบบ?')) return
     setDeleting(true)
     try {
       await api.delete('/api/admin/terms-image')
@@ -134,7 +134,7 @@ export default function AdminTermsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-display font-bold text-slate-800">เงื่อนไขการใช้งาน</h1>
+        <h1 className="text-xl font-display font-bold text-slate-800">เรียนรู้การใช้งานระบบ</h1>
         <p className="text-sm text-slate-500 mt-1">
           จัดการรูปภาพเงื่อนไขที่แสดง popup ให้ผู้ใช้ยอมรับหลัง login
         </p>

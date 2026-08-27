@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import api from '../../services/axios'
@@ -234,7 +235,7 @@ function FolderSubList({ folderId, accent }) {
 }
 
 // ────────── Single item ──────────
-function HomeItem({ item, color }) {
+function HomeItem({ item, color, onSelectProgram }) {
   const [expanded, setExpanded] = useState(false)
   const hoverBg = rgba(color, 0.08)
   const iconBg  = rgba(color, 0.12)
@@ -262,8 +263,8 @@ function HomeItem({ item, color }) {
     />
   )
 
-  // PROGRAM (locked / no access)
-  if (item.linkType === 'program' && !item.hasAccess) {
+  // PROGRAM / PROGRAM GROUP (locked / no access)
+  if ((item.linkType === 'program' || item.linkType === 'program_group') && !item.hasAccess) {
     return (
       <li>
         <div
@@ -284,10 +285,19 @@ function HomeItem({ item, color }) {
 
   // PROGRAM
   if (item.linkType === 'program') {
-    const url = `kmportal://open?type=${encodeURIComponent(item.programType || 'file')}&path=${encodeURIComponent(item.filePath || '')}`
+    const hasMultiple = item.filePaths && item.filePaths.length > 1;
+    const handleClick = (e) => {
+      if (hasMultiple) {
+        e.preventDefault();
+        onSelectProgram(item);
+      }
+    };
+    const url = hasMultiple
+      ? '#'
+      : `kmportal://open?type=${encodeURIComponent(item.programType || 'file')}&path=${encodeURIComponent(item.filePath || '')}`;
     return (
       <li>
-        <a href={url} onMouseEnter={handleEnter} onMouseLeave={handleLeave} className={baseRow}>
+        <a href={url} onClick={handleClick} onMouseEnter={handleEnter} onMouseLeave={handleLeave} className={baseRow}>
           <IconChip icon={item.icon} fallback="fa-solid fa-circle-play" />
           <span className="flex-1 min-w-0">
             <span className="block font-medium text-slate-800 truncate">{item.title}</span>
@@ -295,6 +305,28 @@ function HomeItem({ item, color }) {
           </span>
           <Arrow />
         </a>
+      </li>
+    )
+  }
+
+  // PROGRAM GROUP — click opens a modal listing all files inside the mapped folder(s)
+  if (item.linkType === 'program_group') {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={() => onSelectProgram(item)}
+          onMouseEnter={handleEnter}
+          onMouseLeave={handleLeave}
+          className={`${baseRow} w-full text-left`}
+        >
+          <IconChip icon={item.icon} fallback="fa-solid fa-layer-group" />
+          <span className="flex-1 min-w-0">
+            <span className="block font-medium text-slate-800 truncate">{item.title}</span>
+            {item.subtitle && <span className="block text-base text-slate-400 truncate">{item.subtitle}</span>}
+          </span>
+          <Arrow />
+        </button>
       </li>
     )
   }
@@ -385,7 +417,7 @@ function HomeItem({ item, color }) {
 }
 
 // ────────── Single column ──────────
-function HomeColumn({ group }) {
+function HomeColumn({ group, onSelectProgram }) {
   const color = resolveHex(group.color)
   const fg    = pickTextOn(color)
   const count = group.items?.length || 0
@@ -440,11 +472,187 @@ function HomeColumn({ group }) {
             <span className="text-base">ยังไม่มีรายการในกลุ่มนี้</span>
           </li>
         ) : (
-          group.items.map(it => <HomeItem key={it.id} item={it} color={color} />)
+          group.items.map(it => <HomeItem key={it.id} item={it} color={color} onSelectProgram={onSelectProgram} />)
         )}
       </ul>
     </div>
   )
+}
+
+// ────────── File Selection Modal (Popup) ──────────
+// Handles two modes:
+//   program        — list comes from item.filePaths (AD-group mappings, already resolved)
+//   program_group  — list is fetched live from the server (files inside the mapped folder)
+function FileSelectionModal({ item, onClose }) {
+  const isGroup = item?.linkType === 'program_group';
+  const [groupFiles, setGroupFiles] = useState(null);
+  const [loading, setLoading]       = useState(isGroup);
+  const [error, setError]           = useState(null);
+
+  useEffect(() => {
+    if (!isGroup || !item?.id) return;
+    let abort = false;
+    setLoading(true);
+    setError(null);
+    api.get(`/api/home/items/${item.id}/files`)
+      .then(r => { if (!abort) setGroupFiles(r.data?.files || []) })
+      .catch(e => { if (!abort) setError(e.response?.data?.error || 'โหลดรายการไฟล์ไม่สำเร็จ') })
+      .finally(() => { if (!abort) setLoading(false) });
+    return () => { abort = true };
+  }, [isGroup, item?.id]);
+
+  if (!item) return null;
+
+  const entries = isGroup
+    ? (groupFiles || []).map(f => ({ name: f.fileName, path: f.filePath, adGroup: f.adGroup }))
+    : (item.filePaths || []).map(fp => ({
+        name: fp.filePath.split(/[\\/]/).pop() || fp.filePath,
+        path: fp.filePath,
+        adGroup: fp.adGroup,
+      }));
+
+  const handleOpenPath = (path) => {
+    const url = `kmportal://open?type=${encodeURIComponent(item.programType || 'file')}&path=${encodeURIComponent(path)}`;
+    window.location.href = url;
+    onClose();
+  };
+
+  const getProgramIcon = (pType) => {
+    switch (String(pType).toLowerCase()) {
+      case 'excel':
+        return { icon: ['fas', 'file-excel'], color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100/60' };
+      case 'powerbi':
+        return { icon: ['fas', 'chart-bar'], color: 'text-amber-500', bg: 'bg-amber-50 border-amber-100/60' };
+      case 'word':
+        return { icon: ['fas', 'file-word'], color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100/60' };
+      default:
+        return { icon: ['fas', 'file-lines'], color: 'text-slate-500', bg: 'bg-slate-50 border-slate-100/60' };
+    }
+  };
+
+  const info = getProgramIcon(item.programType);
+
+  const animationStyle = `
+    @keyframes modalFadeIn {
+      from { opacity: 0; backdrop-filter: blur(0px); }
+      to { opacity: 1; backdrop-filter: blur(4px); }
+    }
+    @keyframes modalScaleUp {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .animate-modal-fade-in {
+      animation: modalFadeIn 0.2s ease-out forwards;
+    }
+    .animate-modal-scale-up {
+      animation: modalScaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+  `;
+
+  return createPortal(
+    <>
+      <style dangerouslySetInnerHTML={{ __html: animationStyle }} />
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-2 animate-modal-fade-in"
+        style={{ backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+        onClick={onClose}
+      >
+        <div 
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col border border-slate-100 animate-modal-scale-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${info.bg} ${info.color}`}>
+                <FontAwesomeIcon icon={info.icon} className="text-lg" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-slate-800 text-base leading-tight">
+                  เลือกไฟล์ที่ต้องการเปิด
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isGroup
+                    ? 'ไฟล์ภายในโฟลเดอร์ของกลุ่ม AD Group ของคุณ'
+                    : 'พบบันทึกหลายไฟล์ภายใต้กลุ่ม AD Group ของคุณ'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              title="ปิด"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+            >
+              <FontAwesomeIcon icon={['fas', 'xmark']} className="text-base" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-5 max-h-[60vh] overflow-y-auto space-y-3">
+            {loading && (
+              <div className="py-10 text-center text-sm text-slate-400">
+                <FontAwesomeIcon icon={['fas', 'circle-notch']} spin className="mr-2" />
+                กำลังโหลดรายการไฟล์…
+              </div>
+            )}
+            {!loading && error && (
+              <div className="py-8 text-center text-sm text-red-600">
+                <FontAwesomeIcon icon={['fas', 'circle-exclamation']} className="mr-1" /> {error}
+              </div>
+            )}
+            {!loading && !error && (
+              <>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                  {isGroup ? 'ไฟล์ในโฟลเดอร์' : 'รายการไฟล์ที่แมตช์'} ({entries.length} ไฟล์):
+                </p>
+                {entries.length === 0 && (
+                  <div className="py-8 text-center text-sm text-slate-400 italic">
+                    ไม่พบไฟล์ในโฟลเดอร์
+                  </div>
+                )}
+                {entries.map((en, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleOpenPath(en.path)}
+                    className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-brand hover:bg-brand-soft/30 hover:shadow-sm transition-all flex items-center gap-4 group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center text-sm font-semibold flex-shrink-0 group-hover:bg-brand group-hover:text-white group-hover:border-brand transition-all">
+                      {idx + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          AD: {en.adGroup}
+                        </span>
+                      </div>
+                      <span className="block text-sm font-semibold text-slate-700 truncate group-hover:text-brand transition-colors" title={en.path}>
+                        {en.name}
+                      </span>
+                      <span className="block text-xs text-slate-400 truncate mt-0.5" title={en.path}>
+                        {en.path}
+                      </span>
+                    </div>
+                    <FontAwesomeIcon icon={['fas', 'chevron-right']} className="w-3 text-slate-300 group-hover:text-brand group-hover:translate-x-1 transition-all" />
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-semibold text-sm transition-colors shadow-sm"
+            >
+              ยกเลิก
+            </button>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
 }
 
 // ────────── Main layout ──────────
@@ -452,6 +660,7 @@ export default function HomeColumns() {
   const [groups, setGroups]   = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
+  const [selectedItemForSelect, setSelectedItemForSelect] = useState(null)
 
   useEffect(() => {
     let abort = false
@@ -491,8 +700,16 @@ export default function HomeColumns() {
   if (!groups.length) return null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-10">
-      {groups.map(g => <HomeColumn key={g.id} group={g} />)}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-10">
+        {groups.map(g => <HomeColumn key={g.id} group={g} onSelectProgram={setSelectedItemForSelect} />)}
+      </div>
+      {selectedItemForSelect && (
+        <FileSelectionModal 
+          item={selectedItemForSelect} 
+          onClose={() => setSelectedItemForSelect(null)} 
+        />
+      )}
+    </>
   )
 }

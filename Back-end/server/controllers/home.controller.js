@@ -26,6 +26,21 @@ async function getHomeData(req, res) {
     }
 }
 
+// GET /api/home/items/:id/files — list files inside a program_group item's mapped folder(s)
+async function getItemFiles(req, res) {
+    try {
+        const itemId = parseInt(req.params.id, 10);
+        const userGroups = req.user?.groups || [];
+        const data = await homeService.getProgramGroupFiles(itemId, userGroups);
+        res.json(data);
+    } catch (err) {
+        if (err.code === 'NOT_FOUND')  return _err(res, 'NOT_FOUND', 'ไม่พบรายการนี้', 404);
+        if (err.code === 'FORBIDDEN')  return _err(res, 'FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงรายการนี้', 403);
+        logger.logEvent('ERROR_SYSTEM', { level: 'error', message: `getItemFiles: ${err.message}` });
+        res.status(500).json({ error: 'Failed to list files', code: 'HOME_FILES_FAIL' });
+    }
+}
+
 // ──────── ADMIN ───────────────────────────────────────────────
 
 async function adminGetAll(req, res) {
@@ -136,6 +151,7 @@ async function adminReplaceMappings(req, res) {
 
 module.exports = {
     getHomeData,
+    getItemFiles,
     adminGetAll,
     adminUpdateGroup,
     adminCreateItem,

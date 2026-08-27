@@ -20,6 +20,13 @@ const publicRouter = Router();
 // GET /api/home/data — returns groups with permission-filtered items for current user
 publicRouter.get('/data', authenticateAD, ctrl.getHomeData);
 
+// GET /api/home/items/:id/files — list files in a program_group item's folder(s)
+publicRouter.get('/items/:id/files',
+    authenticateAD,
+    param('id').isInt({ min: 1 }).toInt(),
+    ctrl.getItemFiles
+);
+
 // ──────────── ADMIN ROUTER ──────────────
 const adminRouter = Router();
 adminRouter.use(authenticateAD);
@@ -46,7 +53,7 @@ const itemValidation = [
     body('title').isString().trim().isLength({ min: 1, max: 200 }),
     body('subtitle').optional({ nullable: true }).isString().isLength({ max: 300 }),
     body('icon').optional({ nullable: true }).isString().isLength({ max: 2000 }),
-    body('linkType').isIn(['program', 'folder', 'knowledge', 'external_link']),
+    body('linkType').isIn(['program', 'program_group', 'folder', 'knowledge', 'external_link']),
     body('programType').optional({ nullable: true }).isString().isLength({ max: 50 }),
     body('folderId').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
     body('knowledgeId').optional({ nullable: true }).isInt({ min: 1 }).toInt(),
