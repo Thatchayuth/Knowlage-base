@@ -4,7 +4,8 @@ const path = require('path');
 const { getPool, sql, closePool } = require('./server/config/database');
 (async () => {
   try {
-    const file = path.join(__dirname, 'SQL', 'migration_add_home_columns.sql');
+    const fileName = process.argv[2] || 'migration_add_home_columns.sql';
+    const file = path.join(__dirname, 'SQL', fileName);
     const text = fs.readFileSync(file, 'utf8');
     const batches = text.split(/^\s*GO\s*$/mi).map(s => s.trim()).filter(Boolean);
     const pool = await getPool();
