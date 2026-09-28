@@ -69,5 +69,8 @@ export const adminUpdateKnowledge = (id, data) => {
 export const adminDeleteKnowledge = (id)       => api.delete(`/api/admin/knowledge/${id}`).then(r => r.data)
 
 // ─── Settings ─────────────────────────────────────────────────
+// public: เฉพาะ key ที่อนุญาต (portal_title, portal_icon, terms_*) — ไม่มี portal_drive_root
 export const fetchSettings        = ()      => api.get('/api/settings').then(r => r.data.data)
+// admin: settings ทั้งหมด (รวม portal_drive_root)
+export const adminFetchSettings   = ()      => api.get('/api/admin/settings').then(r => r.data.data)
 export const adminUpdateSettings  = (data)  => api.put('/api/admin/settings', data).then(r => r.data.data)

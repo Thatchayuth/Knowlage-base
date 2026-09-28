@@ -222,6 +222,11 @@ async function start() {
             const intervalMs = syncInterval * 60 * 1000;
 
             const runAutoSync = async () => {
+                // Another sync (admin / syncuser / previous tick) still running → skip this tick
+                if (folderSyncService.isSyncRunning()) {
+                    logger.logEvent('ERROR_SYSTEM', { level: 'warn', message: '[AUTO-SYNC] sync อื่นกำลังทำงานอยู่ — ข้ามรอบนี้' });
+                    return;
+                }
                 try {
                     // อ่าน path จาก DB ทุกครั้ง — ถ้า admin อัพเดตใน Settings จะมีผลทันทีรอบหน้า
                     const pool = await _getPool();
@@ -239,6 +244,11 @@ async function start() {
                         message: `[AUTO-SYNC] done — inserted:${r.inserted} updated:${r.updated} deleted:${r.deleted} files:${r.filesScanned}`,
                     });
                 } catch (e) {
+                    if (e.code === folderSyncService.SYNC_IN_PROGRESS) {
+                        // Lost the race to a manual sync started while reading settings — skip
+                        logger.logEvent('ERROR_SYSTEM', { level: 'warn', message: '[AUTO-SYNC] sync อื่นกำลังทำงานอยู่ — ข้ามรอบนี้' });
+                        return;
+                    }
                     logger.logEvent('ERROR_SYSTEM', { level: 'warn', message: `[AUTO-SYNC] failed: ${e.message}` });
                 }
             };

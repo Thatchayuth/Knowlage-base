@@ -50,17 +50,20 @@
 }
 
 @layer components {
+  /* Buttons — 44px tall for touch screens */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-brand text-white font-semibold text-sm rounded-xl;
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2 bg-brand text-white font-semibold text-[15px] rounded-xl;
     @apply transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand/40;
-    box-shadow: 0 10px 25px rgba(10, 24, 85, 0.25);
+    @apply hover:bg-navy-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100;
+    box-shadow: 0 8px 20px -6px rgba(10, 24, 85, 0.4);
   }
 
   .btn-secondary {
     border: 1px solid var(--border-soft);
     background: #fff;
     color: var(--brand);
-    @apply inline-flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-xl shadow-sm transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2 font-semibold text-[15px] rounded-xl shadow-sm transition-all duration-200;
+    @apply active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand/15;
   }
   .btn-secondary:hover {
     background: var(--brand-soft);
@@ -71,21 +74,49 @@
   }
 
   .btn-danger {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white font-medium text-sm rounded-xl;
-    @apply hover:bg-red-500/90 focus:outline-none focus:ring-2 focus:ring-red-400/40 transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2 bg-red-600 text-white font-semibold text-[15px] rounded-xl;
+    @apply hover:bg-red-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-red-400/40 transition-all duration-200;
+    @apply disabled:opacity-60 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-3 py-2 text-brand font-medium text-sm rounded-xl;
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 text-brand font-semibold text-[15px] rounded-xl;
     @apply hover:bg-brand/10 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand/15;
+    @apply disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  /* Square icon-only button (edit / delete / move in lists) */
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-500 flex-shrink-0;
+    @apply hover:bg-slate-100 hover:text-brand transition-colors focus:outline-none focus:ring-2 focus:ring-brand/15;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent;
+  }
+  .btn-icon-danger {
+    @apply hover:bg-red-50 hover:text-red-600;
   }
 
   .input-field {
     border: 1px solid var(--border-soft);
     background: #fff;
-    @apply w-full px-4 py-2 text-slate-900 text-sm rounded-xl placeholder-slate-500 shadow-inner;
-    box-shadow: inset 0 1px 2px rgba(10, 24, 85, 0.08);
-    @apply focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all duration-200;
+    @apply w-full min-h-[44px] px-4 py-2 text-slate-900 text-base rounded-xl placeholder-slate-400;
+    box-shadow: inset 0 1px 2px rgba(10, 24, 85, 0.06);
+    @apply focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all duration-200;
+    @apply disabled:bg-slate-50 disabled:text-slate-500;
+  }
+  /* Attribute selector, not :read-only — Chrome treats <select> as :read-only */
+  .input-field[readonly] {
+    @apply bg-slate-50 text-slate-500;
+  }
+
+  /* Form labels / hints / errors */
+  .field-label {
+    @apply block text-sm font-semibold text-slate-700 mb-1.5;
+  }
+  .field-hint {
+    @apply mt-1.5 text-sm text-slate-500 leading-relaxed;
+  }
+  .field-error {
+    @apply mt-1.5 text-sm text-red-600;
   }
 
   .panel {
@@ -93,6 +124,13 @@
     background: var(--panel);
     border-radius: 1.75rem;
     box-shadow: 0 20px 55px rgba(10, 24, 85, 0.08);
+  }
+
+  /* Admin content card — same floating style as the home columns */
+  .card,
+  .admin-card {
+    @apply bg-white rounded-[24px] border border-slate-200/80;
+    box-shadow: 0 1px 2px rgba(10, 24, 85, 0.05), 0 8px 24px -12px rgba(10, 24, 85, 0.15);
   }
 
   .badge-pdf {
@@ -130,8 +168,25 @@
 }
 
 @layer utilities {
+  /* Soft glows in the Cell-E column colors (navy, green, teal), so white
+     cards stand out without a flat gray page. */
   .app-shell {
-    background: var(--surface);
+    background-color: var(--surface);
+    background-image:
+      radial-gradient(ellipse 60% 45% at 0% 0%, rgba(30, 64, 175, 0.12), transparent 70%),
+      radial-gradient(ellipse 50% 40% at 100% 15%, rgba(22, 163, 74, 0.09), transparent 70%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(13, 148, 136, 0.10), transparent 70%),
+      linear-gradient(180deg, #f8faff 0%, #eef2fb 100%);
+    background-attachment: fixed;
+  }
+
+  /* Home column card: shadows come from --card-shadow(-hover), set inline per group color. */
+  .home-card {
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 300ms ease-out;
+  }
+  .group:hover .home-card {
+    box-shadow: var(--card-shadow-hover);
   }
 
   .app-overlay {
@@ -191,3 +246,221 @@
   @apply px-3 py-0.5 text-slate-800 text-sm;
 }
 .km-content tr:nth-child(even) td { background: #f9faff; }
+
+/* Modal enter/exit (TermsModal / Info popup) */
+@keyframes modal-backdrop-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes modal-panel-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(12px) scale(0.97); }
+}
+.modal-backdrop-in  { animation: modal-backdrop-in 250ms ease-out both; }
+.modal-backdrop-out { animation: modal-backdrop-out 200ms ease-in both; }
+.modal-panel-in     { animation: modal-panel-in 350ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.modal-panel-out    { animation: modal-panel-out 200ms ease-in both; }
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop-in, .modal-backdrop-out, .modal-panel-in, .modal-panel-out { animation-duration: 1ms; }
+}
+
+/* Home hero weather effects (HeroWeather.jsx) */
+@keyframes wx-rain {
+  from { transform: translateY(-30px) rotate(12deg); }
+  to   { transform: translateY(280px) rotate(12deg); }
+}
+@keyframes wx-twinkle { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
+@keyframes wx-flash {
+  0%, 88%, 100% { opacity: 0; }
+  89%   { opacity: 0.35; }
+  90%   { opacity: 0; }
+  91.5% { opacity: 0.25; }
+  93%   { opacity: 0; }
+}
+.wx-drop {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 18px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.6));
+  animation: wx-rain linear infinite;
+}
+.wx-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 9999px;
+  background: #fff;
+  animation: wx-twinkle ease-in-out infinite;
+}
+.wx-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: wx-flash 8s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-drop { display: none; }
+  .wx-star { animation: none; opacity: 0.5; }
+  .wx-flash { animation: none; opacity: 0; }
+}
+
+/* Home column rows (HomeColumns.jsx): hover lifts the row, fills its icon with
+   the group color and slides in the arrow. --row-accent* are set per column. */
+.home-row {
+  transition: background-color 200ms ease, box-shadow 250ms ease, transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.home-row:hover {
+  background-color: #fff !important;
+  transform: translateX(4px);
+  box-shadow: inset 3px 0 0 var(--row-accent), 0 8px 20px -10px var(--row-accent-shadow) !important;
+}
+.home-row:active { transform: translateX(4px) scale(0.99); }
+.home-row-icon {
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease,
+              transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.home-row:hover .home-row-icon {
+  background-color: var(--row-accent) !important;
+  color: var(--row-accent-fg) !important;
+  transform: scale(1.1) rotate(-6deg);
+  box-shadow: 0 6px 14px -4px var(--row-accent-shadow);
+}
+.home-row-title { transition: color 200ms ease; }
+.home-row:hover .home-row-title { color: var(--row-accent-text); }
+.home-row-arrow {
+  color: var(--row-accent-text);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 250ms ease, transform 250ms ease, background-color 250ms ease, color 250ms ease;
+}
+.home-row:hover .home-row-arrow {
+  opacity: 1;
+  transform: translateX(0);
+  background-color: var(--row-accent);
+  color: var(--row-accent-fg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-row:hover, .home-row:active, .home-row:hover .home-row-icon { transform: none; }
+}
+
+/* Folder tree rows inside a home column (HomeColumns.jsx) — a lighter
+   version of .home-row. Uses the column's --row-accent* variables. */
+.home-subrow {
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease,
+              transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.home-subrow:hover {
+  background-color: #fff;
+  color: var(--row-accent-text);
+  transform: translateX(3px);
+  box-shadow: 0 4px 12px -8px var(--row-accent-shadow);
+}
+.home-subrow:active { transform: translateX(3px) scale(0.99); }
+.home-subrow-icon { transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.home-subrow:hover .home-subrow-icon { transform: scale(1.18); }
+
+/* Children of a freshly expanded folder fade/slide in one after another. */
+@keyframes home-item-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.home-stagger > li { animation: home-item-in 280ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.home-stagger > li:nth-child(2)  { animation-delay: 30ms; }
+.home-stagger > li:nth-child(3)  { animation-delay: 60ms; }
+.home-stagger > li:nth-child(4)  { animation-delay: 90ms; }
+.home-stagger > li:nth-child(5)  { animation-delay: 120ms; }
+.home-stagger > li:nth-child(6)  { animation-delay: 150ms; }
+.home-stagger > li:nth-child(7)  { animation-delay: 180ms; }
+.home-stagger > li:nth-child(8)  { animation-delay: 210ms; }
+.home-stagger > li:nth-child(9)  { animation-delay: 240ms; }
+.home-stagger > li:nth-child(n+10) { animation-delay: 270ms; }
+
+/* Show more / Show less: extra rows slide in staggered, and slide out
+   (height collapsing) before the list shrinks. ROW_LEAVE_MS = 260. */
+@keyframes home-row-enter {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes home-row-leave {
+  from { opacity: 1; max-height: 140px; }
+  to   { opacity: 0; max-height: 0; transform: translateY(-8px); }
+}
+.home-row-enter { animation: home-row-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.home-row-leave { animation: home-row-leave 260ms ease-in forwards; overflow: hidden; }
+
+/* Show more button */
+.show-more-btn {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease,
+              box-shadow 250ms ease, transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.show-more-btn:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--brand);
+  border-color: rgba(10, 24, 85, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgba(10, 24, 85, 0.35);
+}
+.show-more-btn:active { transform: translateY(0) scale(0.99); }
+.show-more-chevron {
+  background-color: rgba(10, 24, 85, 0.06);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+.show-more-btn:hover .show-more-chevron {
+  background-color: var(--brand);
+  color: #fff;
+  animation: show-more-nudge 900ms ease-in-out infinite;
+}
+@keyframes show-more-nudge {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-subrow:hover, .home-subrow:active, .home-subrow:hover .home-subrow-icon,
+  .show-more-btn:hover, .show-more-btn:active { transform: none; }
+  .home-stagger > li, .home-row-enter, .show-more-btn:hover .show-more-chevron { animation: none; }
+  .home-row-leave { animation-duration: 1ms; }
+}
+
+/* Sidebar tree rows (PortalSidebarSection.jsx) */
+.sb-row {
+  transition: background-color 200ms ease, color 200ms ease, transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sb-row:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  transform: translateX(2px);
+}
+.sb-row:active { transform: translateX(2px) scale(0.99); }
+.sb-row-icon { transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.sb-row:hover .sb-row-icon { transform: scale(1.15); }
+.sb-row-active {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.06));
+  box-shadow: inset 3px 0 0 #38bdf8;
+}
+.sb-row-active:hover { background: linear-gradient(90deg, rgba(56, 189, 248, 0.28), rgba(56, 189, 248, 0.10)); }
+
+/* Children of an expanded sidebar folder fade/slide in one after another. */
+.sb-stagger > * { animation: home-item-in 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.sb-stagger > :nth-child(2)  { animation-delay: 25ms; }
+.sb-stagger > :nth-child(3)  { animation-delay: 50ms; }
+.sb-stagger > :nth-child(4)  { animation-delay: 75ms; }
+.sb-stagger > :nth-child(5)  { animation-delay: 100ms; }
+.sb-stagger > :nth-child(6)  { animation-delay: 125ms; }
+.sb-stagger > :nth-child(7)  { animation-delay: 150ms; }
+.sb-stagger > :nth-child(8)  { animation-delay: 175ms; }
+.sb-stagger > :nth-child(n+9) { animation-delay: 200ms; }
+
+/* Thin scrollbar that fits the dark sidebar */
+.sb-scroll { scrollbar-color: rgba(255, 255, 255, 0.18) transparent; }
+.sb-scroll::-webkit-scrollbar-track { background: transparent; }
+.sb-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); }
+.sb-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-row:hover, .sb-row:active, .sb-row:hover .sb-row-icon { transform: none; }
+  .sb-stagger > * { animation: none; }
+}

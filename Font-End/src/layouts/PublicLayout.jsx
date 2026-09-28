@@ -7,6 +7,24 @@ import IconRenderer from '../components/ui/IconRenderer'
 import LogoNCR from '../img/NCR-logo-web.png'
 import PortalSidebarSection from '../components/portal/PortalSidebarSection'
 import TermsModal from '../components/TermsModal'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+
+const COLLAPSED_KEY = 'sidebar.collapsed'
+
+// Collapsed by default: the home page needs the width more than the sidebar does.
+function readCollapsed() {
+  try { return localStorage.getItem(COLLAPSED_KEY) !== '0' } catch { return true }
+}
+
+// Icon button in the collapsed desktop rail.
+function RailButton({ icon, label, to, onClick, danger = false }) {
+  const cls = `w-11 h-11 rounded-xl flex items-center justify-center text-lg transition-colors ${
+    danger ? 'text-white/50 hover:text-red-400 hover:bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10'
+  }`
+  const icn = <FontAwesomeIcon icon={['fas', icon]} />
+  if (to) return <Link to={to} className={cls} title={label} aria-label={label}>{icn}</Link>
+  return <button type="button" onClick={onClick} className={cls} title={label} aria-label={label}>{icn}</button>
+}
 
 function MenuSkeleton() {
   return (
@@ -192,6 +210,12 @@ export default function PublicLayout({ children }) {
   const [searchQ, setSearchQ] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [collapsed, setCollapsedState] = useState(readCollapsed)
+
+  const setCollapsed = (v) => {
+    try { localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0') } catch { /* storage blocked */ }
+    setCollapsedState(v)
+  }
 
   const handleSearch = useCallback((e) => {
     e.preventDefault()
@@ -227,28 +251,86 @@ export default function PublicLayout({ children }) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-30 w-72 flex flex-col bg-brand text-white border border-brand/40
-          transition-transform duration-300 lg:translate-x-0
+          fixed top-0 left-0 h-full z-30 w-72 flex flex-col bg-gradient-to-b from-[#0d1f6b] via-brand to-[#060d33] text-white border-r border-white/5
+          transition-[transform,width] duration-300 lg:translate-x-0
+          ${collapsed ? 'lg:w-20' : ''}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
+        {/* Desktop: collapse / expand tab, vertically centered on the sidebar edge */}
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="group/tab hidden lg:flex absolute top-1/2 -translate-y-1/2 -right-4 z-10 w-8 h-16 items-center justify-center rounded-full bg-gradient-to-b from-white to-slate-100 text-brand ring-1 ring-brand/15 shadow-[0_6px_18px_-4px_rgba(10,24,85,0.35)] hover:w-9 hover:from-brand hover:to-navy-700 hover:text-white hover:ring-white/30 hover:shadow-[0_10px_24px_-6px_rgba(10,24,85,0.55)] active:scale-95 transition-all duration-200"
+          title={collapsed ? 'กางเมนู' : 'พับเมนู'}
+          aria-label={collapsed ? 'กางเมนู' : 'พับเมนู'}
+        >
+          <FontAwesomeIcon
+            icon={['fas', 'chevron-right']}
+            className={`w-3 transition-transform duration-300 ${collapsed ? 'group-hover/tab:translate-x-0.5' : 'rotate-180 group-hover/tab:-translate-x-0.5'}`}
+          />
+        </button>
+
+        {/* Desktop mini rail — shown only while collapsed */}
+        {collapsed && (
+          <div className="hidden lg:flex flex-col items-center flex-1 min-h-0 py-5">
+            <Link to="/" className="px-2" title="Cell-E Onsite Desktop">
+              <span className="block rounded-xl bg-white p-1.5 shadow-md">
+                <img src={LogoNCR} alt="NCR" className="w-12 h-auto" />
+              </span>
+            </Link>
+            <div className="mt-5 pt-4 w-full border-t border-white/10 flex flex-col items-center gap-2">
+              <RailButton icon="folder-tree" label="Cell-E Onsite Desktop" onClick={() => setCollapsed(false)} />
+              {!loading && !error && menu.length > 0 && (
+                <RailButton icon="book" label="Knowledge" onClick={() => setCollapsed(false)} />
+              )}
+            </div>
+            <div className="mt-auto w-full pt-3 border-t border-white/30 flex flex-col items-center gap-2">
+              {user?.role === 'admin' && <RailButton icon="gear" label="Administrator" to="/administrator/home" />}
+              {user?.role === 'syncuser' && <RailButton icon="rotate" label="Sync Drive" to="/sync" />}
+              {user && (
+                <>
+                  <span
+                    className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-white/60"
+                    title={user.username}
+                  >
+                    <FontAwesomeIcon icon={['fas', 'user']} />
+                  </span>
+                  <RailButton
+                    icon="right-from-bracket"
+                    label="ออกจากระบบ"
+                    danger
+                    onClick={() => { logout(); navigate('/admin-login') }}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Full sidebar — always on mobile, on desktop only while expanded */}
+        <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? 'lg:hidden' : ''}`}>
         {/* Brand */}
-        <div className="flex-shrink-0 px-5 py-5 border-b border-white/10 bg-white/2">
-          <Link to="/" className="group" onClick={() => setSidebarOpen(false)}>
-            <div className="flex flex-col items-center gap-3 text-center">
-          <img
-            src={LogoNCR}
-            alt="NCR Knowledge Base"
-            className="mx-auto h-16 w-auto"
-          />         
-              <div className="leading-tight">
-                <div className="font-display font-bold text-slate-100 text-base tracking-wide group-hover:text-accent-300 transition-colors">
-                  Cell-E Onsite Desktop
-                </div>
-                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-500 font-mono">----</div>
+        <div className="flex-shrink-0 px-4 pt-5 pb-4">
+          <Link to="/" className="group block" onClick={() => setSidebarOpen(false)}>
+            {/* Logo on a white card — its red/blue artwork is hard to read on navy */}
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.5)] transition-transform duration-300 group-hover:-translate-y-0.5">
+              <img src={LogoNCR} alt="NCR" className="mx-auto h-12 w-auto" />
+            </div>
+            <div className="mt-3 text-center leading-tight">
+              <div className="font-display font-bold text-white text-base tracking-wide">
+                Cell-E Onsite Desktop
+              </div>
+              <div className="mt-1 text-[10px] uppercase tracking-[0.25em] text-sky-300/70 font-mono">
+                Centralized Information
               </div>
             </div>
           </Link>
+          <div
+            aria-hidden="true"
+            className="mt-4 h-px"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(56,189,248,0.5), rgba(34,197,94,0.5), rgba(20,184,166,0.5), transparent)' }}
+          />
 
           {/* Search */}
           {/* <form onSubmit={handleSearch} className="mt-4">
@@ -273,9 +355,9 @@ export default function PublicLayout({ children }) {
         </div>
 
         {/* Menu tree */}
-        <div className="flex-1 overflow-y-auto py-3">
+        <div className="sb-scroll flex-1 overflow-y-auto py-2">
           {/* Cell-E-File Portal section — above IFAQ */}
-          <div className="mb-2 border-b border-white/10 pb-2">
+          <div className="mb-2 pb-2">
             <PortalSidebarSection />
           </div>
 
@@ -293,12 +375,12 @@ export default function PublicLayout({ children }) {
         </div>
 
         {/* Footer links */}
-        <div className="flex-shrink-0 border-t border-white/30 px-4 py-3 space-y-1">
+        <div className="flex-shrink-0 border-t border-white/10 px-3 py-3 space-y-1 bg-black/10">
           {/* แสดง Administrator link เฉพาะ admin */}
           {user?.role === 'admin' && (
             <Link
-              to="/administrator"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors font-mono"
+              to="/administrator/home"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -312,7 +394,7 @@ export default function PublicLayout({ children }) {
           {user?.role === 'syncuser' && (
             <Link
               to="/sync"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors font-mono"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -323,29 +405,38 @@ export default function PublicLayout({ children }) {
 
           {/* User info + logout */}
           {user && (
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5">
-              <div className="flex items-center gap-2 min-w-0">
-                <svg className="w-3.5 h-3.5 text-steel-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span className="text-xs text-white/60 font-mono truncate">{user.username}</span>
+            <div className="flex items-center gap-3 px-2.5 py-2 rounded-xl bg-white/[0.06] ring-1 ring-white/10">
+              <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-sky-400 to-teal-500 text-white font-display font-bold text-sm uppercase">
+                {String(user.username || '?').replace(/^.*\\/, '').charAt(0)}
+              </span>
+              <div className="flex-1 min-w-0 leading-tight">
+                <div className="text-sm font-semibold text-white truncate">{user.username}</div>
+                <div className="text-[11px] text-slate-400">ออนไลน์</div>
               </div>
               <button
                 onClick={() => { logout(); navigate('/admin-login') }}
-                className="text-xs text-white/40 hover:text-red-400 transition-colors font-mono flex-shrink-0 ml-2"
-                title="Sign out"
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-white/50 hover:text-red-300 hover:bg-red-500/15 transition-colors"
+                title="ออกจากระบบ"
+                aria-label="ออกจากระบบ"
               >
-                ออก
+                <FontAwesomeIcon icon={['fas', 'right-from-bracket']} />
               </button>
             </div>
           )}
         </div>
+        </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
+      <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-72'}`}>
         {/* Top navbar (touch-friendly, sticky) */}
-        <header className="sticky top-0 z-20 flex-shrink-0 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+        {/* Frosted bar over the tinted page, with an accent line in the three column colors */}
+        <header className="sticky top-0 z-20 flex-shrink-0 bg-white/60 backdrop-blur-xl shadow-[0_4px_20px_rgba(10,24,85,0.06)]">
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-[3px]"
+            style={{ background: 'linear-gradient(90deg, #1e40af 0%, #16a34a 50%, #0d9488 100%)' }}
+          />
           <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
             {/* Mobile hamburger */}
             <button
@@ -364,8 +455,24 @@ export default function PublicLayout({ children }) {
               <span className="font-display font-semibold text-brand text-base truncate hidden sm:inline">I-FAQ</span>
             </Link>
 
+            {/* Desktop: left slot — system name while the sidebar is collapsed.
+                It and the empty right slot share the leftover width equally,
+                which keeps the search group centered. */}
+            <div className="hidden lg:flex flex-1 basis-0 min-w-0 items-center">
+              {collapsed && (
+                <Link to="/" className="group flex items-center gap-3 min-w-0">
+                  <span className="w-1.5 h-8 rounded-full flex-shrink-0 bg-gradient-to-b from-blue-700 via-green-600 to-teal-600" />
+                  <span className="font-display font-bold text-xl text-brand whitespace-nowrap truncate group-hover:text-brand/80 transition-colors">
+                    Cell-E Onsite Desktop
+                  </span>
+                </Link>
+              )}
+            </div>
+
+            {/* Center group — search, home, info */}
+            <div className="flex-1 lg:flex-none lg:w-full lg:max-w-2xl xl:max-w-4xl flex items-center gap-3 min-w-0">
             {/* Search (full-width, touch-friendly) */}
-            <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 max-w-3xl mx-auto lg:mx-0">
+            <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 min-w-0">
               <div className="relative flex-1">
                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +483,7 @@ export default function PublicLayout({ children }) {
                   value={searchQ}
                   onChange={e => setSearchQ(e.target.value)}
                   placeholder="ค้นหาเอกสาร ขั้นตอน หรือกลุ่ม…"
-                  className="w-full h-12 pl-12 pr-4 rounded-xl bg-slate-100 border border-slate-200 focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 text-base text-brand-ink placeholder:text-slate-400 outline-none transition-all"
+                  className="w-full h-12 pl-12 pr-4 rounded-xl bg-white/80 border border-slate-200/80 shadow-sm focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 text-base text-brand-ink placeholder:text-slate-400 outline-none transition-all"
                 />
                 {searchQ && (
                   <button
@@ -405,7 +512,7 @@ export default function PublicLayout({ children }) {
             {/* Home shortcut */}
             <Link
               to="/"
-              className="hidden lg:flex flex-shrink-0 w-12 h-12 items-center justify-center text-slate-500 hover:text-brand hover:bg-slate-100 active:bg-slate-200 rounded-xl transition-colors"
+              className="hidden lg:flex flex-shrink-0 w-12 h-12 items-center justify-center text-slate-500 hover:text-brand hover:bg-white active:bg-slate-100 rounded-xl transition-colors"
               title="หน้าแรก"
               aria-label="หน้าแรก"
             >
@@ -418,7 +525,7 @@ export default function PublicLayout({ children }) {
             <button
               type="button"
               onClick={() => setShowAbout(true)}
-              className="flex flex-shrink-0 h-12 px-4 items-center justify-center gap-2 text-slate-500 hover:text-brand hover:bg-slate-100 hover:border-slate-300 active:bg-slate-200 border border-slate-200 rounded-full transition-all font-display font-medium text-base shadow-sm"
+              className="flex flex-shrink-0 h-12 px-4 items-center justify-center gap-2 text-slate-500 bg-white/70 hover:text-brand hover:bg-white hover:border-slate-300 active:bg-slate-100 border border-slate-200/80 rounded-full transition-all font-display font-medium text-base shadow-sm"
               title="เกี่ยวกับระบบ (About)"
               aria-label="เกี่ยวกับระบบ"
             >
@@ -427,6 +534,10 @@ export default function PublicLayout({ children }) {
               </svg>
               <span>Info</span>
             </button>
+            </div>
+
+            {/* Desktop: right slot — balances the left one */}
+            <div className="hidden lg:block flex-1 basis-0" />
           </div>
         </header>
 

@@ -18,6 +18,7 @@
  *   getSubtree(folderId)        ← recursive CTE
  *   createFolder(data)
  *   updateFolder(id, data)
+ *   isSelfOrDescendant(id, candidateId) ← cycle check for ParentId changes
  *   deleteFolder(id)            ← soft delete (IsActive=0)
  *   upsertByPath(data)          ← MERGE by FullPath — used by sync
  *   getAllPaths()                ← returns [{Id, FullPath}] for sync diff
@@ -100,7 +101,7 @@ async function getSubtree(folderId = null) {
 // WRITE
 // ──────────────────────────────────────────────────────────────
 
-async function createFolder({ folderName, fullPath, parentId = null, sortOrder = 0, icon = 'folder', description = null }) {
+async function createFolder({ folderName, fullPath, parentId = null, sortOrder = 0, icon = 'folder', description = null, isHidden = false }) {
   const pool   = await getPool();
   const result = await pool.request()
     .input('name',   sql.NVarChar(255),  folderName)
@@ -109,18 +110,26 @@ async function createFolder({ folderName, fullPath, parentId = null, sortOrder =
     .input('sort',   sql.Int,            sortOrder)
     .input('icon',   sql.NVarChar(50),   icon)
     .input('desc',   sql.NVarChar(500),  description)
+    .input('hidden', sql.Bit,            isHidden ? 1 : 0)
     .query(`
-      INSERT INTO dbo.Folders (FolderName, FullPath, ParentId, SortOrder, Icon, Description, IsManual)
+      INSERT INTO dbo.Folders (FolderName, FullPath, ParentId, SortOrder, Icon, Description, IsHidden, IsManual)
       OUTPUT INSERTED.Id
-      VALUES (@name, @path, @parent, @sort, @icon, @desc, 1)
+      VALUES (@name, @path, @parent, @sort, @icon, @desc, @hidden, 1)
     `);
   return result.recordset[0].Id;
 }
 
-async function updateFolder(id, { folderName, sortOrder, icon, isHidden, description }) {
+/**
+ * Partial update. FullPath is intentionally NOT updatable (owned by sync).
+ * parentId: undefined → unchanged; null → move to top level; number → new parent
+ * (caller must validate existence / no cycle — see isSelfOrDescendant).
+ */
+async function updateFolder(id, { folderName, sortOrder, icon, isHidden, description, parentId }) {
   const pool = await getPool();
   await pool.request()
     .input('id',     sql.Int,           id)
+    .input('setParent', sql.Bit,        parentId !== undefined ? 1 : 0)
+    .input('parent', sql.Int,           parentId != null ? parentId : null)
     .input('name',   sql.NVarChar(255), folderName  != null ? String(folderName).trim() : null)
     .input('sort',   sql.Int,           sortOrder   != null ? sortOrder   : null)
     .input('icon',   sql.NVarChar(50),  icon        != null ? icon        : null)
@@ -133,9 +142,32 @@ async function updateFolder(id, { folderName, sortOrder, icon, isHidden, descrip
              Icon        = COALESCE(@icon,   Icon),
              IsHidden    = COALESCE(@hidden, IsHidden),
              Description = COALESCE(@desc,   Description),
+             ParentId    = CASE WHEN @setParent = 1 THEN @parent ELSE ParentId END,
              UpdatedAt   = GETDATE()
       WHERE  Id = @id
     `);
+}
+
+/**
+ * True when candidateId is folderId itself or one of its descendants.
+ * Used to reject a ParentId change that would create a cycle.
+ */
+async function isSelfOrDescendant(folderId, candidateId) {
+  const pool   = await getPool();
+  const result = await pool.request()
+    .input('id',   sql.Int, folderId)
+    .input('cand', sql.Int, candidateId)
+    .query(`
+      WITH descendants AS (
+        SELECT Id FROM dbo.Folders WHERE Id = @id
+        UNION ALL
+        SELECT f.Id FROM dbo.Folders f
+        INNER JOIN descendants d ON f.ParentId = d.Id
+      )
+      SELECT COUNT(1) AS Hit FROM descendants WHERE Id = @cand
+      OPTION (MAXRECURSION 1000)
+    `);
+  return result.recordset[0].Hit > 0;
 }
 
 /** Hard-delete a folder and ALL its descendants, including their permissions and file metadata.
@@ -227,10 +259,12 @@ async function upsertByPath({ folderName, fullPath, parentId = null, sortOrder =
 }
 
 /** All FullPaths in DB — for sync diff against filesystem.
- *  Returns IsManual so sync can skip soft-delete on manually-created folders. */
+ *  Returns IsManual so sync can skip soft-delete on manually-created folders,
+ *  ParentId/SortOrder so a re-synced (override) root keeps its place in the tree,
+ *  and IsActive so already soft-deleted rows are not deleted/counted again. */
 async function getAllPaths() {
   const pool   = await getPool();
-  const result = await pool.request().query('SELECT Id, FullPath, IsManual FROM dbo.Folders');
+  const result = await pool.request().query('SELECT Id, FullPath, IsManual, ParentId, SortOrder, IsActive FROM dbo.Folders');
   return result.recordset;
 }
 
@@ -241,14 +275,14 @@ async function getAllPaths() {
  */
 async function softDeleteFolder(id) {
   const pool = await getPool();
-  // await pool.request()
-  //   .input('id', sql.Int, id)
-  //   .query(`
-  //     UPDATE dbo.Folders
-  //     SET    IsActive  = 0,
-  //            UpdatedAt = GETDATE()
-  //     WHERE  Id = @id
-  //   `);
+  await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      UPDATE dbo.Folders
+      SET    IsActive  = 0,
+             UpdatedAt = GETDATE()
+      WHERE  Id = @id
+    `);
 }
 
 module.exports = {
@@ -258,6 +292,7 @@ module.exports = {
   getSubtree,
   createFolder,
   updateFolder,
+  isSelfOrDescendant,
   deleteFolder,
   softDeleteFolder,
   upsertByPath,

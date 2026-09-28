@@ -16,10 +16,31 @@
  */
 
 const folderSyncService = require('../services/folderSync.service');
+
+/** dryRun=1 / true / yes on the query string or body → report only, write nothing. */
+function wantsDryRun(req) {
+  const raw = req.query?.dryRun ?? req.body?.dryRun;
+  return raw === true || raw === 1 || ['1', 'true', 'yes'].includes(String(raw).toLowerCase());
+}
 const auditRepo         = require('../repositories/auditLog.repository');
 const syncUserRepo      = require('../repositories/syncUser.repository');
 const { invalidateAuthCache } = require('../middlewares/auth');
 const { getPool }       = require('../config/database');
+const { normalize, stripTrailing, isSameOrUnder, hasTraversal } = require('../utils/pathHelper');
+
+/** Sync already running (in-process lock in folderSync.service) → 409 instead of 500. */
+function sendSyncError(res, err) {
+  if (err && err.code === folderSyncService.SYNC_IN_PROGRESS) {
+    return res.status(409).json({
+      success: false,
+      code:    err.code,
+      message: err.message,
+      error:   err.message,
+      runningSince: err.runningSince || null,
+    });
+  }
+  return res.status(500).json({ success: false, message: err.message });
+}
 
 /**
  * Read portal_drive_root from dbo.SiteSettings (DB-managed, not from .env)
@@ -37,7 +58,21 @@ async function getPortalDriveRoot() {
  */
 async function triggerSync(req, res) {
   try {
-    const rootPath = req.body?.rootPath || await getPortalDriveRoot();
+    const driveRoot = await getPortalDriveRoot();
+    const override  = typeof req.body?.rootPath === 'string' ? req.body.rootPath.trim() : '';
+
+    // An override rootPath may only be the configured drive root or a folder
+    // under it — never an arbitrary path on the server.
+    if (override) {
+      if (!driveRoot) {
+        return badRequest(res, 'ยังไม่ได้ตั้งค่า portal_drive_root ใน Site Settings — ไม่อนุญาตให้ระบุ rootPath เอง');
+      }
+      if (hasTraversal(override) || !isSameOrUnder(override, driveRoot)) {
+        return badRequest(res, `rootPath ต้องเป็น portal_drive_root (${driveRoot}) หรือโฟลเดอร์ย่อยภายในเท่านั้น`);
+      }
+    }
+
+    const rootPath = override ? stripTrailing(normalize(override)) : driveRoot;
 
     if (!rootPath) {
       return res.status(400).json({
@@ -48,14 +83,20 @@ async function triggerSync(req, res) {
 
     const result = await folderSyncService.syncDrive(
       rootPath,
-      req.adminUser?.username || req.user?.username || 'admin',
-      req.ip
+      req.user?.username || 'admin',
+      req.ip,
+      { dryRun: wantsDryRun(req) }
     );
 
     return res.json({ success: true, data: result });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return sendSyncError(res, err);
   }
+}
+
+/** 400 with both `message` and `error` so either frontend convention shows the text. */
+function badRequest(res, msg) {
+  return res.status(400).json({ success: false, message: msg, error: msg });
 }
 
 /**
@@ -73,11 +114,11 @@ async function triggerSyncAsUser(req, res) {
     }
 
     const triggeredBy = req.user?.username || 'syncuser';
-    const result = await folderSyncService.syncDrive(rootPath, triggeredBy, req.ip);
+    const result = await folderSyncService.syncDrive(rootPath, triggeredBy, req.ip, { dryRun: wantsDryRun(req) });
 
     return res.json({ success: true, data: result });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return sendSyncError(res, err);
   }
 }
 
@@ -86,7 +127,10 @@ async function triggerSyncAsUser(req, res) {
  */
 async function getSyncLogs(req, res) {
   try {
-    const limit = parseInt(req.query.limit || '50', 10);
+    // Integer 1..500; missing / non-numeric → 100
+    const parsed = parseInt(req.query.limit, 10);
+    const limit  = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 500) : 100;
+    // Sync writes Action = 'SYNC' or 'SYNC_DRYRUN' → prefix match on 'SYNC'
     const logs  = await auditRepo.getRecent(limit, 'SYNC');
     return res.json({ success: true, data: logs });
   } catch (err) {
@@ -118,6 +162,8 @@ async function addSyncUser(req, res) {
     }
 
     const created = await syncUserRepo.create(username, req.user?.username || 'admin');
+    // Drop any cached auth result so the new 'syncuser' role applies on the next request
+    invalidateAuthCache(username);
     return res.status(201).json({ success: true, data: created });
   } catch (err) {
     // Duplicate username (UQ constraint)
@@ -134,11 +180,13 @@ async function addSyncUser(req, res) {
 async function removeSyncUser(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
+    // Look up the username first so its auth cache entry can be invalidated
+    const target = await syncUserRepo.getById(id);
     const ok = await syncUserRepo.remove(id);
     if (!ok) return res.status(404).json({ success: false, message: 'ไม่พบ Sync User' });
 
-    // Invalidate auth cache ของ user นั้น (ถ้าทราบ username)
-    // อาจต้อง get username ก่อน แต่ soft-delete ไปแล้ว → cache หมดอายุเองใน 5 นาที
+    // Invalidate auth cache ของ user นั้น → role 'syncuser' หมดผลทันที (ไม่ต้องรอ 5 นาที)
+    if (target?.Username) invalidateAuthCache(target.Username);
 
     return res.json({ success: true });
   } catch (err) {

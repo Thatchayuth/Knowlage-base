@@ -1,71 +1,143 @@
 import { useState, useEffect, useRef } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useToast } from '../../components/ui/Toast'
-import Spinner from '../../components/ui/Spinner'
 import api from '../../services/axios'
+import { adminFetchSettings } from '../../services/services'
+import PageHeader from '../../components/ui/PageHeader'
+import Toggle from '../../components/ui/Toggle'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { LoadingState, ErrorState, apiError } from '../../components/ui/States'
 
 const ACCEPT_TYPES = 'image/jpeg,image/png,image/gif,image/webp'
+const ACCEPT_LIST  = ACCEPT_TYPES.split(',')
 const MAX_SIZE_MB  = 10
+const MAX_MINUTES  = 480
+
+function CardHeader({ icon, title, subtitle, right }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 pb-4 mb-5 border-b border-slate-100">
+      <span className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-lg bg-brand-soft text-brand">
+        <FontAwesomeIcon icon={['fas', icon]} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <h2 className="font-display font-bold text-lg text-slate-800">{title}</h2>
+        {subtitle && <p className="text-base text-slate-500">{subtitle}</p>}
+      </div>
+      {right}
+    </div>
+  )
+}
 
 export default function AdminTermsPage() {
   const { toast } = useToast()
   const fileInputRef = useRef(null)
+  const imgUrlRef    = useRef(null)   // blob URL ปัจจุบัน (ไว้ revoke)
+  const previewRef   = useRef(null)   // blob URL preview ปัจจุบัน (ไว้ revoke)
 
   const [imgUrl,    setImgUrl]    = useState(null)   // blob URL ของรูปปัจจุบัน
   const [enabled,   setEnabled]   = useState(false)
   const [loading,   setLoading]   = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [deleting,  setDeleting]  = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [preview,   setPreview]   = useState(null)   // blob URL preview ก่อน upload
   const [file,      setFile]      = useState(null)   // File object
+  const [dragOver,  setDragOver]  = useState(false)
 
   // Inactivity timeout settings
   const [inactivityMinutes, setInactivityMinutes] = useState(0)
   const [savingSettings,    setSavingSettings]    = useState(false)
+  // ค่าที่บันทึกอยู่ใน server (ไว้เทียบว่าแก้ไขแล้วยังไม่บันทึก)
+  const [saved, setSaved] = useState({ enabled: false, minutes: 0 })
 
-  // โหลดรูปปัจจุบัน + settings
-  const loadCurrentImage = () => {
+  // แทนที่ blob URL พร้อม revoke ตัวเก่า
+  const replaceImgUrl = (url) => {
+    if (imgUrlRef.current) URL.revokeObjectURL(imgUrlRef.current)
+    imgUrlRef.current = url
+    setImgUrl(url)
+  }
+  const replacePreview = (url) => {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    previewRef.current = url
+    setPreview(url)
+  }
+
+  // โหลดเฉพาะรูปปัจจุบัน (ไม่แตะค่าอื่นในฟอร์ม)
+  const loadCurrentImage = () =>
+    api.get('/api/settings/terms-image', { responseType: 'blob' })
+      .then(resp => replaceImgUrl(URL.createObjectURL(resp.data)))
+      .catch(() => replaceImgUrl(null))
+
+  // โหลด settings + รูป (ครั้งแรกที่เปิดหน้า)
+  const loadAll = () => {
     setLoading(true)
-    api.get('/api/settings')
-      .then(r => {
-        const s = r.data?.data || {}
-        setEnabled(s.terms_image_enabled === 'true')
+    setLoadError(null)
+    adminFetchSettings()
+      .then(s => {
+        s = s || {}
+        const en = s.terms_image_enabled === 'true'
         const mins = parseInt(s.terms_inactivity_minutes, 10)
-        setInactivityMinutes(isNaN(mins) || mins < 0 ? 0 : mins)
-        if (s.terms_image_filename && s.terms_image_enabled === 'true') {
-          return api.get('/api/settings/terms-image', { responseType: 'blob' })
-        }
+        const m = isNaN(mins) || mins < 0 ? 0 : mins
+        setEnabled(en)
+        setInactivityMinutes(m)
+        setSaved({ enabled: en, minutes: m })
+        // มีรูปอยู่ก็แสดง แม้ popup จะถูกปิดอยู่ (เพื่อให้ลบ/ดูได้)
+        if (s.terms_image_filename) return loadCurrentImage()
+        replaceImgUrl(null)
         return null
       })
-      .then(resp => {
-        if (resp) {
-          const url = URL.createObjectURL(resp.data)
-          setImgUrl(url)
-        } else {
-          setImgUrl(null)
-        }
+      .catch(err => {
+        replaceImgUrl(null)
+        const message = apiError(err, 'โหลดการตั้งค่าไม่สำเร็จ')
+        setLoadError(message)
+        toast({ message, type: 'error' })
       })
-      .catch(() => setImgUrl(null))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
-    loadCurrentImage()
+    loadAll()
     return () => {
-      if (imgUrl) URL.revokeObjectURL(imgUrl)
-      if (preview) URL.revokeObjectURL(preview)
+      if (imgUrlRef.current) URL.revokeObjectURL(imgUrlRef.current)
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current)
     }
   }, []) // eslint-disable-line
+
+  // ตรวจไฟล์ แล้วตั้งเป็น preview (ใช้ทั้งเลือกไฟล์และลากวาง)
+  const acceptFile = (f) => {
+    if (!f) return false
+    if (!ACCEPT_LIST.includes(f.type)) {
+      toast({ message: 'อนุญาตเฉพาะไฟล์ JPG, PNG, GIF หรือ WEBP', type: 'error' })
+      return false
+    }
+    if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast({ message: `ไฟล์ใหญ่เกิน ${MAX_SIZE_MB} MB`, type: 'error' })
+      return false
+    }
+    setFile(f)
+    replacePreview(URL.createObjectURL(f))
+    return true
+  }
 
   const handleFileChange = (e) => {
     const f = e.target.files?.[0]
     if (!f) return
-    if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      toast({ message: `ไฟล์ใหญ่เกิน ${MAX_SIZE_MB} MB`, type: 'error' })
-      return
-    }
-    if (preview) URL.revokeObjectURL(preview)
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
+    if (!acceptFile(f)) e.target.value = ''   // ให้เลือกไฟล์เดิมซ้ำแล้ว onChange ยังทำงาน
+  }
+
+  const openPicker = () => fileInputRef.current?.click()
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    if (uploading) return
+    acceptFile(e.dataTransfer.files?.[0])
+  }
+  const dragProps = {
+    onDragOver:  (e) => { e.preventDefault(); if (!dragOver) setDragOver(true) },
+    onDragLeave: () => setDragOver(false),
+    onDrop:      handleDrop,
   }
 
   const handleUpload = async () => {
@@ -74,15 +146,20 @@ export default function AdminTermsPage() {
     const formData = new FormData()
     formData.append('termsImage', file)
     try {
-      await api.post('/api/admin/terms-image', formData, {
+      const resp = await api.post('/api/admin/terms-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      toast({ message: 'อัปโหลดรูปเงื่อนไขสำเร็จ', type: 'success' })
+      toast({ message: 'อัปโหลดรูปสำเร็จ — เปิด Popup ให้ผู้ใช้แล้ว', type: 'success' })
       setFile(null)
-      if (preview) { URL.revokeObjectURL(preview); setPreview(null) }
-      loadCurrentImage()
-    } catch {
-      toast({ message: 'อัปโหลดล้มเหลว', type: 'error' })
+      replacePreview(null)
+      // server เปิด popup อัตโนมัติเมื่ออัปโหลด → สะท้อนสถานะนั้น (ไม่แตะเวลา inactivity)
+      if (resp.data?.data?.enabled) {
+        setEnabled(true)
+        setSaved(prev => ({ ...prev, enabled: true }))
+      }
+      await loadCurrentImage()
+    } catch (err) {
+      toast({ message: apiError(err, 'อัปโหลดล้มเหลว'), type: 'error' })
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -90,271 +167,263 @@ export default function AdminTermsPage() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('ยืนยันลบรูปเรียนรู้การใช้งานระบบ?')) return
     setDeleting(true)
     try {
       await api.delete('/api/admin/terms-image')
-      toast({ message: 'ลบรูปเรียบร้อย', type: 'success' })
-      if (imgUrl) { URL.revokeObjectURL(imgUrl); setImgUrl(null) }
+      toast({ message: 'ลบรูปเรียบร้อย — ปิด Popup แล้ว', type: 'success' })
+      replaceImgUrl(null)
       setEnabled(false)
-    } catch {
-      toast({ message: 'ลบล้มเหลว', type: 'error' })
+      setSaved(prev => ({ ...prev, enabled: false }))
+      setConfirmDelete(false)
+    } catch (err) {
+      toast({ message: apiError(err, 'ลบล้มเหลว'), type: 'error' })
     } finally {
       setDeleting(false)
     }
   }
 
   const handleCancelPreview = () => {
-    if (preview) { URL.revokeObjectURL(preview); setPreview(null) }
+    replacePreview(null)
     setFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleSaveSettings = async () => {
-    const mins = parseInt(inactivityMinutes, 10)
-    if (isNaN(mins) || mins < 0 || mins > 480) {
-      toast({ message: 'กรุณากรอกเวลา 0–480 นาที (0 = ปิดใช้งาน)', type: 'error' })
+  const minutesNum   = parseInt(inactivityMinutes, 10)
+  const minutesValid = !isNaN(minutesNum) && minutesNum >= 0 && minutesNum <= MAX_MINUTES
+  const dirty = enabled !== saved.enabled || (minutesValid ? minutesNum : inactivityMinutes) !== saved.minutes
+
+  const handleSaveSettings = async (e) => {
+    e?.preventDefault()
+    if (!minutesValid) {
+      toast({ message: `กรุณากรอกเวลา 0–${MAX_MINUTES} นาที (0 = ปิดใช้งาน)`, type: 'error' })
       return
     }
     setSavingSettings(true)
     try {
       await api.put('/api/admin/terms-settings', {
-        terms_inactivity_minutes: mins,
+        terms_inactivity_minutes: minutesNum,
         terms_image_enabled: enabled,
       })
+      setInactivityMinutes(minutesNum)
+      setSaved({ enabled, minutes: minutesNum })
       toast({ message: 'บันทึกการตั้งค่าสำเร็จ', type: 'success' })
-    } catch {
-      toast({ message: 'บันทึกล้มเหลว', type: 'error' })
+    } catch (err) {
+      toast({ message: apiError(err, 'บันทึกล้มเหลว'), type: 'error' })
     } finally {
       setSavingSettings(false)
     }
   }
 
+  const live = saved.enabled && !!imgUrl
+  const statusBadge = (
+    <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${
+      live ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+    }`}>
+      <span className={`w-2 h-2 rounded-full ${live ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+      {live ? 'Popup เปิดอยู่' : imgUrl ? 'Popup ปิดอยู่' : 'ยังไม่มีรูป'}
+    </span>
+  )
+
+  const hiddenInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept={ACCEPT_TYPES}
+      className="hidden"
+      onChange={handleFileChange}
+    />
+  )
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Page header */}
-      <div>
-        <h1 className="text-xl font-display font-bold text-slate-800">เรียนรู้การใช้งานระบบ</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          จัดการรูปภาพเงื่อนไขที่แสดง popup ให้ผู้ใช้ยอมรับหลัง login
-        </p>
-      </div>
+    <div className="max-w-3xl mx-auto animate-fade-in">
+      <PageHeader
+        icon="chalkboard-user"
+        title="เรียนรู้การใช้งานระบบ"
+        subtitle="รูปแนะนำการใช้งานที่แสดงเป็น Popup ให้ผู้ใช้กดยอมรับหลังเข้าสู่ระบบ"
+      />
 
-      {/* Current image panel */}
-      <div className="card p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-700 flex items-center gap-2">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            รูปปัจจุบัน
-          </h2>
-          {/* Status badge */}
-          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-            enabled && imgUrl
-              ? 'bg-green-100 text-green-700'
-              : 'bg-slate-100 text-slate-500'
-          }`}>
-            {enabled && imgUrl ? 'เปิดใช้งาน' : 'ปิดใช้งาน / ยังไม่มีรูป'}
-          </span>
-        </div>
+      {loading ? (
+        <LoadingState rows={4} />
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={loadAll} />
+      ) : (
+        <div className="space-y-6">
+          {/* ── Image card ─────────────────────────────────────── */}
+          <section className="admin-card p-5 sm:p-6">
+            <CardHeader
+              icon="image"
+              title="รูปภาพ"
+              subtitle={`JPG, PNG, GIF, WEBP · ไม่เกิน ${MAX_SIZE_MB} MB`}
+              right={statusBadge}
+            />
+            {hiddenInput}
 
-        {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <Spinner />
-          </div>
-        ) : imgUrl ? (
-          <div className="space-y-3">
-            <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
-              <img
-                src={imgUrl}
-                alt="Terms of use"
-                className="w-full h-auto max-h-[480px] object-contain"
-              />
-            </div>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {deleting ? <Spinner size="sm" /> : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              )}
-              ลบรูปนี้
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-48 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-            <div className="text-center">
-              <svg className="w-10 h-10 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-sm text-slate-400">ยังไม่มีรูปเงื่อนไข</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Upload panel */}
-      <div className="card p-6 space-y-4">
-        <h2 className="font-semibold text-slate-700 flex items-center gap-2">
-          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          อัปโหลดรูปใหม่
-        </h2>
-
-        {/* Drop zone / file input */}
-        <label
-          className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-blue-50 hover:border-blue-400 cursor-pointer transition-colors"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <svg className="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span className="text-sm text-slate-500">
-            คลิกเพื่อเลือกไฟล์รูป
-          </span>
-          <span className="text-xs text-slate-400 mt-1">JPG, PNG, GIF, WEBP · สูงสุด {MAX_SIZE_MB} MB</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPT_TYPES}
-            className="hidden"
-            onChange={handleFileChange}
-          />
-        </label>
-
-        {/* Preview ก่อน upload */}
-        {preview && (
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Preview</p>
-            <div className="rounded-xl border border-blue-200 overflow-hidden bg-slate-50">
-              <img
-                src={preview}
-                alt="Preview"
-                className="w-full h-auto max-h-[400px] object-contain"
-              />
-            </div>
-            <p className="text-xs text-slate-500">
-              ไฟล์: <span className="font-mono text-slate-700">{file?.name}</span>
-              {' · '}{(file?.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-            <div className="flex gap-3">
+            {preview ? (
+              /* รูปใหม่ที่ยังไม่ได้อัปโหลด */
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-base font-semibold text-brand">
+                  <FontAwesomeIcon icon={['fas', 'eye']} /> ตัวอย่างรูปใหม่ (ยังไม่ได้อัปโหลด)
+                </div>
+                <div className="rounded-2xl border-2 border-brand/30 overflow-hidden bg-slate-50">
+                  <img src={preview} alt="ตัวอย่างรูปใหม่" className="w-full h-auto max-h-[420px] object-contain" />
+                </div>
+                <p className="text-base text-slate-600 break-all">
+                  <FontAwesomeIcon icon={['fas', 'file-image']} className="mr-2 text-slate-500" />
+                  <span className="font-mono">{file?.name}</span>
+                  <span className="text-slate-500"> · {((file?.size || 0) / 1024 / 1024).toFixed(2)} MB</span>
+                </p>
+                <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-base text-sky-900">
+                  <FontAwesomeIcon icon={['fas', 'circle-info']} className="mt-1 flex-shrink-0" />
+                  <span>
+                    เมื่ออัปโหลด ระบบจะ<strong>แทนที่รูปเดิม</strong>และ<strong>เปิด Popup ให้อัตโนมัติ</strong>
+                  </span>
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+                  <button type="button" onClick={handleCancelPreview} disabled={uploading} className="btn-secondary">
+                    ยกเลิก
+                  </button>
+                  <button type="button" onClick={handleUpload} disabled={uploading} className="btn-primary">
+                    {uploading
+                      ? <><FontAwesomeIcon icon={['fas', 'circle-notch']} spin /> กำลังอัปโหลด…</>
+                      : <><FontAwesomeIcon icon={['fas', 'cloud-arrow-up']} /> อัปโหลดและเปิด Popup</>}
+                  </button>
+                </div>
+              </div>
+            ) : imgUrl ? (
+              /* รูปปัจจุบัน */
+              <div className="space-y-4">
+                <div
+                  {...dragProps}
+                  className={`relative rounded-2xl border overflow-hidden bg-slate-50 transition-colors [&>*]:pointer-events-none ${
+                    dragOver ? 'border-brand ring-4 ring-brand/15' : 'border-slate-200'
+                  }`}
+                >
+                  <img src={imgUrl} alt="รูปเรียนรู้การใช้งานระบบปัจจุบัน" className="w-full h-auto max-h-[480px] object-contain" />
+                  {dragOver && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-brand-soft/90 text-lg font-semibold text-brand">
+                      <FontAwesomeIcon icon={['fas', 'file-arrow-down']} className="mr-2" /> วางไฟล์เพื่อเปลี่ยนรูป
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
+                  <button type="button" onClick={() => setConfirmDelete(true)} className="btn-secondary !text-red-600 !border-red-200 hover:!bg-red-50">
+                    <FontAwesomeIcon icon={['fas', 'trash-can']} /> ลบรูป
+                  </button>
+                  <button type="button" onClick={openPicker} className="btn-primary">
+                    <FontAwesomeIcon icon={['fas', 'arrows-rotate']} /> เปลี่ยนรูป
+                  </button>
+                </div>
+                <p className="field-hint !mt-0">ลากไฟล์รูปมาวางบนรูปด้านบนเพื่อเปลี่ยนได้เช่นกัน</p>
+              </div>
+            ) : (
+              /* ยังไม่มีรูป → dropzone */
               <button
-                onClick={handleUpload}
-                disabled={uploading}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                type="button"
+                onClick={openPicker}
+                {...dragProps}
+                className={`w-full flex flex-col items-center justify-center gap-3 px-6 py-12 rounded-2xl border-2 border-dashed [&>*]:pointer-events-none text-center transition-colors focus:outline-none focus:ring-4 focus:ring-brand/15 ${
+                  dragOver
+                    ? 'border-brand bg-brand-soft'
+                    : 'border-slate-300 bg-slate-50 hover:border-brand/50 hover:bg-brand-soft/50'
+                }`}
               >
-                {uploading ? <Spinner size="sm" /> : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+                <span className="w-14 h-14 rounded-2xl bg-white text-brand shadow-sm flex items-center justify-center text-2xl">
+                  <FontAwesomeIcon icon={['fas', 'cloud-arrow-up']} />
+                </span>
+                <span className="text-lg font-semibold text-slate-800">
+                  {dragOver ? 'วางไฟล์ที่นี่' : 'คลิกเพื่อเลือกรูป หรือลากไฟล์มาวาง'}
+                </span>
+                <span className="text-base text-slate-500">
+                  JPG, PNG, GIF, WEBP · ไม่เกิน {MAX_SIZE_MB} MB — อัปโหลดแล้ว Popup จะเปิดให้อัตโนมัติ
+                </span>
+              </button>
+            )}
+          </section>
+
+          {/* ── Settings card ──────────────────────────────────── */}
+          <form onSubmit={handleSaveSettings} className="admin-card p-5 sm:p-6">
+            <CardHeader
+              icon="gear"
+              title="การแสดง Popup"
+              subtitle="เปิด/ปิด Popup และกำหนดให้แสดงซ้ำเมื่อไม่มีการใช้งาน"
+            />
+
+            <div className="space-y-6">
+              <div className="flex flex-col gap-2">
+                <Toggle
+                  checked={enabled}
+                  onChange={setEnabled}
+                  label="แสดง Popup ให้ผู้ใช้หลังเข้าสู่ระบบ"
+                  disabled={savingSettings || (!imgUrl && !enabled)}
+                />
+                <p className="field-hint !mt-0">
+                  {imgUrl
+                    ? 'เมื่อปิด ผู้ใช้จะไม่เห็น Popup แม้จะมีรูปอยู่'
+                    : 'ต้องอัปโหลดรูปก่อนจึงจะเปิด Popup ได้'}
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="inactivity-minutes" className="field-label">แสดง Popup ซ้ำเมื่อไม่มีการใช้งานนาน</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    id="inactivity-minutes"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={MAX_MINUTES}
+                    value={inactivityMinutes}
+                    onChange={e => setInactivityMinutes(e.target.value)}
+                    className="input-field !w-36"
+                    placeholder="0"
+                    disabled={savingSettings}
+                  />
+                  <span className="text-base text-slate-600">นาที</span>
+                  {minutesValid && minutesNum > 0 && (
+                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-brand-soft text-brand">
+                      <FontAwesomeIcon icon={['fas', 'clock-rotate-left']} />
+                      แสดงซ้ำเมื่อไม่มีการใช้งาน {minutesNum} นาที
+                    </span>
+                  )}
+                  {minutesValid && minutesNum === 0 && (
+                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600">
+                      แสดงครั้งเดียวต่อ session
+                    </span>
+                  )}
+                </div>
+                {!minutesValid && inactivityMinutes !== '' ? (
+                  <p className="field-error">กรุณากรอกตัวเลข 0–{MAX_MINUTES}</p>
+                ) : (
+                  <p className="field-hint">0 = ไม่แสดงซ้ำ · สูงสุด {MAX_MINUTES} นาที (8 ชั่วโมง)</p>
                 )}
-                อัปโหลด
-              </button>
-              <button
-                onClick={handleCancelPreview}
-                disabled={uploading}
-                className="px-4 py-2.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors disabled:opacity-50"
-              >
-                ยกเลิก
+              </div>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+              <span className={`inline-flex items-center gap-2 text-base ${dirty ? 'text-amber-700 font-semibold' : 'text-slate-500'}`} aria-live="polite">
+                <FontAwesomeIcon icon={['fas', dirty ? 'circle-exclamation' : 'circle-check']} className={dirty ? '' : 'text-emerald-600'} />
+                {dirty ? 'มีการแก้ไขที่ยังไม่บันทึก' : 'บันทึกแล้ว'}
+              </span>
+              <button type="submit" disabled={savingSettings || !dirty || !minutesValid} className="btn-primary">
+                {savingSettings
+                  ? <><FontAwesomeIcon icon={['fas', 'circle-notch']} spin /> กำลังบันทึก…</>
+                  : <><FontAwesomeIcon icon={['fas', 'floppy-disk']} /> บันทึกการตั้งค่า</>}
               </button>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Settings panel — enabled toggle + inactivity timeout */}
-      <div className="card p-6 space-y-5">
-        <h2 className="font-semibold text-slate-700 flex items-center gap-2">
-          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          การตั้งค่า Popup
-        </h2>
-
-        {/* Enable / Disable toggle */}
-        <div className="flex items-center justify-between py-3 border-b border-slate-100">
-          <div>
-            <p className="text-sm font-medium text-slate-700">เปิดใช้งาน Popup เงื่อนไข</p>
-            <p className="text-xs text-slate-400 mt-0.5">เมื่อปิด ผู้ใช้จะไม่เห็น popup แม้จะมีรูปอยู่</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setEnabled(v => !v)}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-              enabled ? 'bg-blue-600' : 'bg-slate-200'
-            }`}
-            role="switch"
-            aria-checked={enabled}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                enabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
+          </form>
         </div>
+      )}
 
-        {/* Inactivity timeout */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-700">
-            เวลา Inactivity ก่อนแสดง Popup ซ้ำ
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min={0}
-              max={480}
-              value={inactivityMinutes}
-              onChange={e => setInactivityMinutes(e.target.value)}
-              className="w-28 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="0"
-            />
-            <span className="text-sm text-slate-500">นาที</span>
-            {inactivityMinutes > 0 && (
-              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                แสดงซ้ำทุก {inactivityMinutes} นาที ที่ไม่มีการใช้งาน
-              </span>
-            )}
-            {(inactivityMinutes === 0 || inactivityMinutes === '0' || inactivityMinutes === '') && (
-              <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">
-                ปิดใช้งาน (แสดงครั้งเดียวต่อ session)
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-400">
-            ค่า 0 = ไม่แสดงซ้ำ · สูงสุด 480 นาที (8 ชั่วโมง)
-          </p>
-        </div>
-
-        <button
-          onClick={handleSaveSettings}
-          disabled={savingSettings}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-        >
-          {savingSettings ? <Spinner size="sm" /> : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-          บันทึกการตั้งค่า
-        </button>
-      </div>
-
-      {/* Info */}
-      <div className="rounded-xl bg-blue-50 border border-blue-200 px-5 py-4">
-        <p className="text-sm text-blue-700 leading-relaxed">
-          <span className="font-semibold">หมายเหตุ:</span> รูปภาพนี้จะแสดงเป็น popup modal ให้ผู้ใช้ยอมรับทันทีหลัง login
-          ครั้งแรกของแต่ละ session · การอัปโหลดรูปใหม่จะแทนที่รูปเดิมทันที
-        </p>
-      </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => !deleting && setConfirmDelete(false)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        isDangerous
+        title="ลบรูปเรียนรู้การใช้งานระบบ"
+        message="ลบรูปนี้และปิด Popup ทันที ผู้ใช้จะไม่เห็น Popup จนกว่าจะอัปโหลดรูปใหม่"
+        confirmText="ลบรูป"
+      />
     </div>
   )
 }

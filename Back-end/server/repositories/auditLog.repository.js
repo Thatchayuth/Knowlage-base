@@ -20,7 +20,7 @@ const logger = require('../services/logger');
  *
  * @param {{
  *   username?:    string,
- *   action:       'VIEW_FOLDER'|'VIEW_FILE'|'DOWNLOAD'|'SYNC'|'PERM_CHANGE'|'FOLDER_EDIT',
+ *   action:       'VIEW_FOLDER'|'VIEW_FILE'|'DOWNLOAD'|'SYNC'|'SYNC_DRYRUN'|'PERM_CHANGE'|'FOLDER_EDIT',
  *   resourceType: 'FOLDER'|'FILE',
  *   resourceId?:  number,
  *   resourcePath?: string,
@@ -53,14 +53,28 @@ async function log(entry) {
   }
 }
 
-async function getRecent(limit = 100) {
-  const pool   = await getPool();
-  const result = await pool.request()
-    .input('top', sql.Int, limit)
-    .query(`
+/**
+ * Most recent audit rows, optionally filtered by Action prefix.
+ *
+ * @param {number} [limit=100]
+ * @param {string|null} [actionPrefix]  e.g. 'SYNC' → matches 'SYNC' and 'SYNC_DRYRUN'
+ *                                      (LIKE prefix; wildcard chars in the prefix are escaped)
+ */
+async function getRecent(limit = 100, actionPrefix = null) {
+  const pool    = await getPool();
+  const request = pool.request().input('top', sql.Int, limit);
+  let where = '';
+  if (actionPrefix) {
+    // Escape LIKE wildcards so e.g. '_' in a prefix matches literally
+    const escaped = String(actionPrefix).replace(/[\\%_[]/g, ch => '\\' + ch);
+    request.input('actionLike', sql.NVarChar(60), `${escaped}%`);
+    where = "WHERE Action LIKE @actionLike ESCAPE '\\'";
+  }
+  const result = await request.query(`
       SELECT TOP (@top) Id,Username,Action,ResourceType,ResourceId,
              ResourcePath,Details,IpAddress,CreatedAt
       FROM   dbo.PortalAuditLogs
+      ${where}
       ORDER  BY CreatedAt DESC
     `);
   return result.recordset;

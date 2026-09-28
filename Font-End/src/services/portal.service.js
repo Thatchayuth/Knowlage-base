@@ -94,9 +94,9 @@ export const adminReplacePermissions = (folderId, permissions) =>
 // ──────────────────────────────────────────────────────────────
 
 /** Trigger a full drive sync. rootPath defaults to PORTAL_DRIVE_ROOT env on server.
- *  Uses a 5-minute timeout since scanning large UNC shares can be slow. */
+ *  Uses a 400s timeout — longer than the server timeout (360s) so the UI never gives up first. */
 export const adminTriggerSync = (rootPath) =>
-  api.post(`${BASE}/admin/sync`, { rootPath }, { timeout: 300000 }).then(r => r.data);
+  api.post(`${BASE}/admin/sync`, { rootPath }, { timeout: 400000 }).then(r => r.data);
 
 /** Get recent sync audit logs */
 export const adminGetSyncLogs = (limit = 50) =>
@@ -124,4 +124,4 @@ export const adminRemoveSyncUser = (id) =>
 
 /** Sync user: trigger sync ด้วย PORTAL_DRIVE_ROOT (ไม่ต้องส่ง rootPath) */
 export const triggerSyncAsUser = () =>
-  api.post(`${BASE}/sync`, {}, { timeout: 300000 }).then(r => r.data);
+  api.post(`${BASE}/sync`, {}, { timeout: 400000 }).then(r => r.data);

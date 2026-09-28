@@ -14,13 +14,19 @@
  */
 
 import { useState, useEffect } from "react";
-import { useParams, useLocation, Link } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PublicLayout from "../layouts/PublicLayout";
 import Spinner from "../components/ui/Spinner";
 import { getApiBaseUrl } from "../services/axios";
 
 function isPdfMime(ct) {
   return ct === "application/pdf" || ct?.startsWith("application/pdf");
+}
+/** Last folder name of a UNC/drive path. */
+function parentFolder(p = "") {
+  const parts = String(p).split(/[\\/]/).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 2] : "";
 }
 function isExcelMime(ct) {
   return ct.includes("spreadsheet") || ct === "application/vnd.ms-excel";
@@ -29,6 +35,7 @@ function isExcelMime(ct) {
 export default function PortalFilePage() {
   const { fileId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const stateFile = location.state?.file; // { Id, FileName, MimeType, ... }
 
   const [viewing, setViewing] = useState(null); // { url?, type: 'pdf'|'video'|'excel', sheets?, activeSheet? }
@@ -36,6 +43,7 @@ export default function PortalFilePage() {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
   const [useBlobFallback, setUseBlobFallback] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0); // bumped by the error "retry" button
 
   const [prevFileId, setPrevFileId] = useState(fileId);
   if (fileId !== prevFileId) {
@@ -237,7 +245,7 @@ export default function PortalFilePage() {
       mounted = false;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [fileId, useBlobFallback]);
+  }, [fileId, useBlobFallback, reloadKey]);
 
   const handleDownload = () => {
     if (!viewing?.url) return;
@@ -249,42 +257,48 @@ export default function PortalFilePage() {
     document.body.removeChild(a);
   };
 
+  // Go back to wherever the user came from (search, folder, home tree);
+  // a direct link has no in-app history, so fall back to home.
+  const handleBack = () => {
+    if (location.key && location.key !== "default") navigate(-1);
+    else navigate("/");
+  };
+
+  const isVideoName = /\.(mp4|webm|ogg|ogv|avi|wmv|flv|mkv|mov|m4v|3gp|mpg|mpeg)$/i.test(fileName);
+  const kind = /\.pdf$/i.test(fileName) || viewing?.type === "pdf"
+    ? { icon: "file-pdf", color: "text-red-500", bg: "bg-red-50" }
+    : isVideoName
+      ? { icon: "file-video", color: "text-purple-500", bg: "bg-purple-50" }
+      : { icon: "file-excel", color: "text-emerald-600", bg: "bg-emerald-50" };
+  const displayName = fileName.replace(/\.[^.\\/]+$/, "");
+  const folderName = parentFolder(stateFile?.FullPath);
+  const canNewTab = viewing?.url && viewing.type !== "video" && viewing.type !== "unsupported_video";
+
   return (
     <PublicLayout>
-      <div className="max-w-6xl mx-auto px-6 py-8 animate-fade-in">
+      <div className="max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 py-5 animate-fade-in">
         {/* Back */}
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-sm text-steel-500 hover:text-brand transition-colors mb-6"
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-2 h-11 px-5 mb-4 rounded-full bg-white/80 border border-slate-200 text-base font-semibold text-slate-600 shadow-sm hover:bg-white hover:text-brand hover:border-brand/30 transition-colors"
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          Back to home
-        </Link>
+          <FontAwesomeIcon icon={["fas", "arrow-left"]} className="w-4" />
+          ย้อนกลับ
+        </button>
 
         {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center justify-center gap-5 py-24">
             <Spinner size="lg" />
             <div className="flex flex-col items-center gap-2 w-full max-w-xs">
-              <p className="text-slate-400 text-sm font-mono font-medium">
-                กำลังโหลดไฟล์... {progress > 0 ? `${progress}%` : ''}
+              <p className="text-slate-500 text-base font-medium">
+                กำลังโหลดไฟล์... {progress > 0 ? `${progress}%` : ""}
               </p>
               {progress > 0 && (
-                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800/40 rounded-full overflow-hidden border border-slate-200/50">
-                  <div 
-                    className="h-full bg-blue-600 rounded-full transition-all duration-150 ease-out" 
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                  <div
+                    className="h-full bg-brand rounded-full transition-all duration-150 ease-out"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -295,188 +309,147 @@ export default function PortalFilePage() {
 
         {/* Error */}
         {error && !loading && (
-          <div className="panel p-8 text-center">
-            <div className="text-4xl mb-3">⚠️</div>
-            <p className="text-red-400 font-mono text-sm mb-4">{error}</p>
-            <Link to="/" className="btn-secondary">
-              Go home
-            </Link>
+          <div className="rounded-[24px] bg-white border border-slate-200 shadow-sm p-10 text-center max-w-xl mx-auto">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center text-red-500 text-2xl">
+              <FontAwesomeIcon icon={["fas", "triangle-exclamation"]} />
+            </div>
+            <h2 className="font-display font-bold text-xl text-slate-800">เปิดไฟล์ไม่สำเร็จ</h2>
+            <p className="mt-1 text-red-600 text-sm">{error}</p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button type="button" onClick={() => setReloadKey(k => k + 1)} className="btn-primary">
+                <FontAwesomeIcon icon={["fas", "rotate-right"]} /> ลองใหม่
+              </button>
+              <button type="button" onClick={handleBack} className="btn-secondary">
+                ย้อนกลับ
+              </button>
+            </div>
           </div>
         )}
 
         {/* Viewer */}
         {viewing && !loading && (
-          <div className="panel overflow-hidden animate-fade-in">
+          <div className="rounded-[24px] bg-white border border-slate-200 overflow-hidden shadow-[0_1px_2px_rgba(10,24,85,0.06),0_8px_24px_-8px_rgba(10,24,85,0.15)] animate-fade-in">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100/70">
-              <div className="flex items-center gap-2">
-                {viewing.type === "pdf" ? (
-                  <svg
-                    className="w-4 h-4 text-orange-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
-                ) : viewing.type === "excel" ? (
-                  <svg
-                    className="w-4 h-4 text-green-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    />
-                  </svg>
-                )}
-                <span className="font-mono text-sm text-brand truncate max-w-lg">
-                  {fileName}
+            <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${kind.bg} ${kind.color}`}>
+                  <FontAwesomeIcon icon={["fas", kind.icon]} />
                 </span>
+                <div className="min-w-0">
+                  <h1 className="font-display font-bold text-lg lg:text-xl text-slate-800 truncate" title={fileName}>
+                    {displayName}
+                  </h1>
+                  {folderName && (
+                    <p className="text-sm text-slate-400 truncate flex items-center gap-1.5" title={stateFile?.FullPath}>
+                      <FontAwesomeIcon icon={["fas", "folder"]} className="w-3" />
+                      {folderName}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {viewing.url && viewing.type !== "video" && viewing.type !== "unsupported_video" && (
-                <a
-                  href={newTabUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary text-xs py-1.5 flex-shrink-0"
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {viewing.url && (
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:text-brand hover:border-brand/30 transition-colors inline-flex items-center gap-2"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                  Open in new tab
-                </a>
-              )}
+                    <FontAwesomeIcon icon={["fas", "download"]} className="w-3.5" />
+                    <span className="hidden sm:inline">ดาวน์โหลด</span>
+                  </button>
+                )}
+                {canNewTab && (
+                  <a
+                    href={newTabUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:text-brand hover:border-brand/30 transition-colors inline-flex items-center gap-2"
+                  >
+                    <FontAwesomeIcon icon={["fas", "up-right-from-square"]} className="w-3.5" />
+                    <span className="hidden sm:inline">เปิดแท็บใหม่</span>
+                  </a>
+                )}
+              </div>
             </div>
 
-            {/* PDF embed */}
+            {/* PDF embed — fills the screen below the header */}
             {viewing.type === "pdf" && (
               <iframe
                 src={viewing.url}
                 title={fileName}
-                className="w-full bg-slate-50"
-                style={{ height: "75vh" }}
+                className="w-full bg-slate-50 block"
+                style={{ height: "calc(100vh - 230px)", minHeight: 480 }}
               />
             )}
 
             {/* Video player */}
             {viewing.type === "video" && (
-              <video
-                controls
-                autoPlay
-                crossOrigin="anonymous"
-                src={viewing.url}
-                className="w-full"
-                style={{ maxHeight: "75vh" }}
-                onError={() => {
-                  if (!viewing.isBlobFallback) {
-                    console.log("Streaming failed, falling back to blob...");
-                    setUseBlobFallback(true);
-                  }
-                }}
-              />
+              <div className="bg-black">
+                <video
+                  controls
+                  autoPlay
+                  crossOrigin="anonymous"
+                  src={viewing.url}
+                  className="w-full block mx-auto"
+                  style={{ maxHeight: "calc(100vh - 230px)" }}
+                  onError={() => {
+                    if (!viewing.isBlobFallback) {
+                      console.log("Streaming failed, falling back to blob...");
+                      setUseBlobFallback(true);
+                    }
+                  }}
+                />
+              </div>
             )}
 
             {/* Unsupported Video */}
             {viewing.type === "unsupported_video" && (
-              <div className="flex flex-col items-center justify-center py-20 px-6 gap-6 bg-slate-900 text-white rounded-b-2xl border-t border-slate-800">
-                <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-3xl">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+              <div className="flex flex-col items-center justify-center py-20 px-6 gap-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 text-2xl">
+                  <FontAwesomeIcon icon={["fas", "triangle-exclamation"]} />
                 </div>
-                
-                <div className="text-center max-w-md space-y-2">
-                  <h4 className="font-display font-bold text-lg text-slate-100">
-                    เบราว์เซอร์ไม่รองรับการเล่นไฟล์ .avi โดยตรง
-                  </h4>
-                  <p className="text-sm text-slate-400 leading-relaxed">
-                    เนื่องจากข้อจำกัดของเว็บเบราว์เซอร์ในไฟล์รูปแบบ AVI กรุณาดาวน์โหลดไฟล์เพื่อนำไปเปิดด้วยโปรแกรมเล่นสื่อในเครื่องของคุณ (เช่น VLC หรือ Windows Media Player)
+                <div className="max-w-md space-y-2">
+                  <h2 className="font-display font-bold text-lg text-slate-800">
+                    เบราว์เซอร์ไม่รองรับการเล่นไฟล์นี้โดยตรง
+                  </h2>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    กรุณาดาวน์โหลดไฟล์แล้วเปิดด้วยโปรแกรมเล่นสื่อในเครื่อง (เช่น VLC หรือ Windows Media Player)
                   </p>
                 </div>
-
-                <button
-                  onClick={handleDownload}
-                  className="btn-primary inline-flex items-center gap-2 px-6 py-3 font-semibold shadow-lg hover:scale-[1.02] transition-all text-sm cursor-pointer"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  ดาวน์โหลดไฟล์วิดีโอเพื่อรับชม
+                <button type="button" onClick={handleDownload} className="btn-primary px-6 py-3">
+                  <FontAwesomeIcon icon={["fas", "download"]} /> ดาวน์โหลดไฟล์วิดีโอ
                 </button>
               </div>
             )}
 
             {/* External opener */}
             {viewing.type === "external" && (
-              <div className="flex flex-col items-center justify-center py-20 px-6 gap-6 text-white text-center">
-                <div className="text-5xl animate-bounce">📂</div>
-
+              <div className="flex flex-col items-center justify-center py-20 px-6 gap-6 text-center">
+                <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-4xl ${kind.bg} ${kind.color}`}>
+                  <FontAwesomeIcon icon={["fas", kind.icon]} />
+                </div>
                 <div className="space-y-2 max-w-md">
-                  <p className="text-slate-200 font-semibold text-lg">
-                    กำลังเปิดไฟล์ผ่านโปรแกรมภายนอก...
+                  <p className="font-display font-bold text-xl text-slate-800">
+                    <FontAwesomeIcon icon={["fas", "circle-notch"]} spin className="mr-2 text-brand" />
+                    กำลังเปิดไฟล์ด้วยโปรแกรมในเครื่อง…
                   </p>
-
-                  <p className="text-slate-400 text-xs leading-relaxed">
-                    ระบบพยายามเรียกเปิดโปรแกรมในเครื่องของคุณอัตโนมัติ (เช่น KM Portal หรือโปรแกรมเล่นสื่อสำหรับวิดีโอ) หากเงียบไป หรือไม่มีโปรแกรมในเครื่อง สามารถเลือกใช้ตัวช่วยด้านล่างได้ครับ
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    ถ้าโปรแกรมไม่เปิดขึ้นมา กด "เปิดอีกครั้ง" หรือดาวน์โหลดไฟล์ไปเปิดเอง
                   </p>
                 </div>
-
                 <div className="flex flex-wrap items-center justify-center gap-3">
-                  <a 
-                    href={viewing.externalUrl} 
-                    className="btn-secondary inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm"
-                  >
-                    เปิดไฟล์อีกครั้ง (Retry)
+                  <a href={viewing.externalUrl} className="btn-secondary px-5 py-2.5">
+                    <FontAwesomeIcon icon={["fas", "rotate-right"]} /> เปิดอีกครั้ง
                   </a>
                   {viewing.url && (
-                    <button
-                      onClick={handleDownload}
-                      className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm cursor-pointer"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      ดาวน์โหลดไฟล์ลงเครื่อง
+                    <button type="button" onClick={handleDownload} className="btn-primary px-5 py-2.5">
+                      <FontAwesomeIcon icon={["fas", "download"]} /> ดาวน์โหลดไฟล์
                     </button>
                   )}
                 </div>
               </div>
-            )}  
+            )}
           </div>
         )}
       </div>

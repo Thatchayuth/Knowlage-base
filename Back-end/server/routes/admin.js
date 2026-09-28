@@ -5,7 +5,7 @@ const { body, param } = require('express-validator');
 const { authenticateAD, authorizeGroup } = require('../middlewares/auth');
 const uploadFile = require('../middlewares/upload');
 const admin = require('../controllers/adminController');
-const { updateSettings, updateTermsSettings, uploadTermsImage, deleteTermsImage } = require('../controllers/settingsController');
+const { getAdminSettings, updateSettings, updateTermsSettings, uploadTermsImage, deleteTermsImage } = require('../controllers/settingsController');
 
 // All admin routes require AD auth + admin-dt group
 router.use(authenticateAD);
@@ -66,10 +66,18 @@ router.delete('/knowledge/:id', param('id').isInt({ min: 1 }).toInt(), admin.del
 // ============================================================
 // SITE SETTINGS
 // ============================================================
+// GET /api/admin/settings — all settings (incl. internal keys e.g. portal_drive_root)
+router.get('/settings', getAdminSettings);
 router.put('/settings', [
-    body('portal_title').trim().notEmpty().withMessage('portal_title is required').isLength({ max: 200 }),
-    body('portal_icon').optional({ nullable: true }).trim().matches(/^[a-z0-9 -]+$/).withMessage('portal_icon invalid').isLength({ max: 100 }),
-    body('portal_drive_root').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 500 }).withMessage('portal_drive_root too long'),
+    body('portal_title').trim()
+        .notEmpty().withMessage('กรุณากรอกชื่อ Portal')
+        .isLength({ max: 200 }).withMessage('ชื่อ Portal ต้องไม่เกิน 200 ตัวอักษร'),
+    // Font Awesome class string เช่น 'fa-solid fa-folder', 'fas fa-x' — ตัวอักษร ตัวเลข ขีด และเว้นวรรคเท่านั้น
+    body('portal_icon').optional({ nullable: true, checkFalsy: true }).trim()
+        .matches(/^[A-Za-z0-9 -]+$/).withMessage('รูปแบบไอคอนไม่ถูกต้อง (ใช้ได้เฉพาะตัวอักษร ตัวเลข ขีด - และเว้นวรรค)')
+        .isLength({ max: 100 }).withMessage('ไอคอนต้องไม่เกิน 100 ตัวอักษร'),
+    body('portal_drive_root').optional({ nullable: true, checkFalsy: true }).trim()
+        .isLength({ max: 500 }).withMessage('Drive Root Path ต้องไม่เกิน 500 ตัวอักษร'),
 ], updateSettings);
 
 // ============================================================
@@ -81,8 +89,10 @@ router.post('/terms-image', uploadTermsImage);
 router.delete('/terms-image', deleteTermsImage);
 // PUT /api/admin/terms-settings  — inactivity timeout + enabled toggle
 router.put('/terms-settings', [
-    body('terms_inactivity_minutes').optional({ nullable: true }).isInt({ min: 0, max: 480 }).toInt(),
-    body('terms_image_enabled').optional({ nullable: true }).isBoolean().toBoolean(),
+    body('terms_inactivity_minutes').optional({ nullable: true })
+        .isInt({ min: 0, max: 480 }).withMessage('เวลา Inactivity ต้องเป็นตัวเลข 0–480 นาที').toInt(),
+    body('terms_image_enabled').optional({ nullable: true })
+        .isBoolean().withMessage('ค่าเปิด/ปิด Popup ไม่ถูกต้อง').toBoolean(),
 ], updateTermsSettings);
 
 module.exports = router;

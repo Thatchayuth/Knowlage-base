@@ -5,6 +5,8 @@ export default {
     extend: {
       colors: {
         brand: '#0a1855',
+        'brand-ink':  '#030b2b',
+        'brand-soft': '#e9edff',
         navy: {
           950: '#050c1d',
           900: '#09142b',
@@ -36,6 +38,7 @@ export default {
           300: '#7288aa',
           200: '#9fb1cb',
           100: '#cfd8e6',
+          50:  '#f4f6fa',
         },
       },
       fontFamily: {

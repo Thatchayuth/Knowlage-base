@@ -15,6 +15,7 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
   const [imgSrc,  setImgSrc]  = useState(null)
   const [loading, setLoading] = useState(true)
   const [zoomed,  setZoomed]  = useState(false)
+  const [closing, setClosing] = useState(false)  // exit animation running
 
   // refs สำหรับ inactivity timer (ไม่ trigger re-render)
   const inactivityTimerRef = useRef(null)
@@ -108,13 +109,15 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
     startInactivityTimer()
   }, [startInactivityTimer])
 
+  // Play the exit animation, then run the real close/accept.
+  const animateOut = useCallback((fn) => {
+    setClosing(true)
+    setTimeout(() => { setClosing(false); fn() }, 200)
+  }, [])
+
   const handleClose = useCallback(() => {
-    if (onClose) {
-      onClose()
-    } else {
-      handleAccept()
-    }
-  }, [onClose, handleAccept])
+    animateOut(onClose || handleAccept)
+  }, [onClose, handleAccept, animateOut])
 
   const isVisible = (forceShow || show) && !loading && imgSrc
 
@@ -122,10 +125,10 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-2"
+      className={`fixed inset-0 z-[9999] flex items-center justify-center p-2 ${closing ? 'modal-backdrop-out' : 'modal-backdrop-in'}`}
       style={{ backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
     >
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden">
+      <div className={`relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden ${closing ? 'modal-panel-out' : 'modal-panel-in'}`}>
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-3">
@@ -177,7 +180,7 @@ export default function TermsModal({ user, forceShow = false, readOnly = false, 
               การใช้งานระบบนี้ถือว่าท่านได้อ่านและยอมรับเรียนรู้การใช้งานระบบทั้งหมดแล้ว
             </p>
             <button
-              onClick={handleAccept}
+              onClick={() => animateOut(handleAccept)}
               className="flex-shrink-0 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-colors shadow-sm"
             >
               รับทราบและยอมรับ

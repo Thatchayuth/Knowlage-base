@@ -48,11 +48,19 @@ async function create(username, createdBy) {
     .input('username',  sql.NVarChar(100), username.toLowerCase().trim())
     .input('createdBy', sql.NVarChar(100), createdBy)
     .query(`
-      INSERT INTO dbo.SyncUsers (Username, CreatedBy)
+      -- A soft-deleted row still holds the UNIQUE username → re-activate it instead of INSERT
+      UPDATE dbo.SyncUsers
+      SET    IsActive = 1, CreatedBy = @createdBy, CreatedAt = GETDATE()
       OUTPUT INSERTED.Id, INSERTED.Username, INSERTED.CreatedAt, INSERTED.CreatedBy
-      VALUES (@username, @createdBy)
+      WHERE  Username = @username AND IsActive = 0;
+
+      IF @@ROWCOUNT = 0
+        INSERT INTO dbo.SyncUsers (Username, CreatedBy)
+        OUTPUT INSERTED.Id, INSERTED.Username, INSERTED.CreatedAt, INSERTED.CreatedBy
+        VALUES (@username, @createdBy);
     `);
-  return result.recordset[0];
+  // UPDATE and INSERT each produce a recordset; exactly one of them has the row
+  return (result.recordsets || []).map(rs => rs[0]).find(Boolean);
 }
 
 /**
@@ -61,12 +69,28 @@ async function create(username, createdBy) {
  */
 async function remove(id) {
   const pool = await getPool();
-  // const result = await pool.request()
-  //   .input('id', sql.Int, id)
-  //   .query(`
-  //     UPDATE dbo.SyncUsers SET IsActive = 0 WHERE Id = @id AND IsActive = 1
-  //   `);
-  return 0//result.rowsAffected[0] > 0;;
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      UPDATE dbo.SyncUsers SET IsActive = 0 WHERE Id = @id AND IsActive = 1
+    `);
+  return result.rowsAffected[0] > 0;
 }
 
-module.exports = { getAll, getByUsername, create, remove };
+/**
+ * ดึง SyncUser (IsActive=1) ตาม Id — ใช้หา username ก่อนลบเพื่อ invalidate auth cache
+ * @returns {Object|null}
+ */
+async function getById(id) {
+  const pool = await getPool();
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      SELECT Id, Username, CreatedAt, CreatedBy
+      FROM   dbo.SyncUsers
+      WHERE  Id = @id AND IsActive = 1
+    `);
+  return result.recordset[0] || null;
+}
+
+module.exports = { getAll, getByUsername, getById, create, remove };

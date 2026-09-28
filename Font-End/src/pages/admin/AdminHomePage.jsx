@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { findIconDefinition } from '@fortawesome/fontawesome-svg-core'
 import api from '../../services/axios'
 import { useToast } from '../../components/ui/Toast'
+import PageHeader from '../../components/ui/PageHeader'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Toggle from '../../components/ui/Toggle'
+import Collapse from '../../components/ui/Collapse'
+import { LoadingState, EmptyState, ErrorState, apiError } from '../../components/ui/States'
 
 // ────────── FA helpers ──────────
 function parseFa(cls) {
@@ -14,19 +21,37 @@ function parseFa(cls) {
   const name = namePart ? namePart.slice(3) : parts.find(p => !p.startsWith('fa-')) || 'circle'
   return [prefix, name]
 }
+/** Is this FA class string one of the icons registered in the library? */
+function faExists(cls) {
+  if (!cls || !String(cls).trim()) return false
+  const [prefix, iconName] = parseFa(cls)
+  try { return !!findIconDefinition({ prefix, iconName }) } catch { return false }
+}
 function FaIcon({ icon, className = '', style }) {
-  if (!icon) return <FontAwesomeIcon icon={['fas', 'circle']} className={className} style={style} />
-  try {
-    return <FontAwesomeIcon icon={parseFa(icon)} className={className} style={style} />
-  } catch {
-    return <FontAwesomeIcon icon={['fas', 'circle-question']} className={className} style={style} />
-  }
+  const def = icon && faExists(icon) ? parseFa(icon) : ['fas', icon ? 'circle-question' : 'circle']
+  return <FontAwesomeIcon icon={def} className={className} style={style} />
 }
 
 // ────────── Color helpers ──────────
 const HEX_RE = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/
 const LEGACY = { blue: '#3B82F6', red: '#EF4444', green: '#10B981' }
 const toHex  = (c) => (HEX_RE.test(c || '') ? c : (LEGACY[c] || '#3B82F6'))
+
+function hexRgb(c) {
+  const h = toHex(c).slice(1)
+  const v = h.length === 3 ? h.split('').map(x => x + x).join('') : h
+  return [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16))
+}
+const rgba = (c, a) => { const [r, g, b] = hexRgb(c); return `rgba(${r}, ${g}, ${b}, ${a})` }
+const isLight = (c) => { const [r, g, b] = hexRgb(c); return 0.299 * r + 0.587 * g + 0.114 * b > 170 }
+/** Foreground that stays readable on a solid chip of this color. */
+const inkOn = (c) => (isLight(c) ? '#030b2b' : '#ffffff')
+/** The color itself as text/icon on white, darkened when it is too pale to read. */
+const accentText = (c) => {
+  if (!isLight(c)) return toHex(c)
+  const [r, g, b] = hexRgb(c)
+  return `rgb(${Math.round(r * 0.5)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.5)})`
+}
 
 const COLOR_PRESETS = [
   '#3B82F6', '#1E40AF', '#0EA5E9', // blues
@@ -46,8 +71,8 @@ const ICON_PRESETS = [
 ]
 
 const LINK_TYPES = [
-  { value: 'program',       label: 'เปิดโปรแกรม',  icon: 'fa-solid fa-circle-play',           hint: 'ใช้ kmportal:// เปิดโปรแกรมในเครื่อง user' },
-  { value: 'program_group', label: 'เปิดโปรแกรมแบบกลุ่ม', icon: 'fa-solid fa-layer-group',   hint: 'ชี้ path ไปยังโฟลเดอร์ — เมื่อคลิกจะแสดงไฟล์ทั้งหมดข้างในให้ user เลือกเปิด' },
+  { value: 'program',       label: 'เปิดโปรแกรม',  icon: 'fa-solid fa-circle-play',           hint: 'ใช้ kmportal:// เปิดโปรแกรมในเครื่องของผู้ใช้' },
+  { value: 'program_group', label: 'เปิดโปรแกรมแบบกลุ่ม', icon: 'fa-solid fa-layer-group',   hint: 'ชี้ path ไปยังโฟลเดอร์ — เมื่อคลิกจะแสดงไฟล์ทั้งหมดข้างในให้ผู้ใช้เลือกเปิด' },
   { value: 'folder',        label: 'โฟลเดอร์',      icon: 'fa-solid fa-folder',                 hint: 'ลิงก์ไปยังโฟลเดอร์ใน Portal' },
   { value: 'knowledge',     label: 'Knowledge',     icon: 'fa-solid fa-book',                   hint: 'ลิงก์ไปยังหน้า Knowledge Item' },
   { value: 'external_link', label: 'URL ภายนอก',    icon: 'fa-solid fa-arrow-up-right-from-square', hint: 'เปิดเว็บไซต์ภายนอก (เปิดแท็บใหม่)' },
@@ -61,67 +86,117 @@ const PROGRAM_TYPES = [
 ]
 
 // ────────── Small UI primitives ──────────
-function Toggle({ checked, onChange, label }) {
+function FieldError({ msg }) {
+  if (!msg) return null
   return (
-    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-      <span className={`relative inline-block w-10 h-5 rounded-full transition ${checked ? 'bg-brand' : 'bg-steel-300'}`}>
-        <input type="checkbox" className="sr-only" checked={checked} onChange={e => onChange(e.target.checked)} />
-        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
-      </span>
-      {label && <span className="text-sm text-steel-700">{label}</span>}
-    </label>
+    <p className="field-error flex items-start gap-1.5" role="alert">
+      <FontAwesomeIcon icon={['fas', 'circle-exclamation']} className="mt-1 flex-shrink-0" />
+      <span>{msg}</span>
+    </p>
   )
 }
 
-function IconPicker({ value, onChange }) {
+function Badge({ icon, children, className = '', style }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-sm font-medium whitespace-nowrap ${className}`} style={style}>
+      {icon && <FontAwesomeIcon icon={['fas', icon]} className="text-xs" />}
+      {children}
+    </span>
+  )
+}
+
+/** Numbered section inside the item form. */
+function FormSection({ step, title, description, children }) {
+  return (
+    <section className="pt-6 first:pt-0 border-t border-slate-100 first:border-t-0">
+      <header className="flex items-start gap-3 mb-4">
+        <span className="w-8 h-8 rounded-full bg-brand-soft text-brand font-display font-bold text-base flex items-center justify-center flex-shrink-0">
+          {step}
+        </span>
+        <div className="min-w-0 pt-0.5">
+          <h3 className="font-display font-bold text-lg text-slate-800 leading-tight">{title}</h3>
+          {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+        </div>
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function IconPicker({ value, onChange, accent = '#0a1855' }) {
   const [open, setOpen] = useState(false)
+  const typed = String(value || '').trim()
+  const found = faExists(typed)
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <div className="w-12 h-12 rounded-lg bg-steel-100 flex items-center justify-center text-steel-700 text-xl border border-steel-200">
-          <FaIcon icon={value} />
-        </div>
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+        <span
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-colors"
+          style={{ backgroundColor: rgba(accent, 0.14), color: accentText(accent) }}
+          title="ตัวอย่างไอคอน"
+        >
+          <FaIcon icon={typed} />
+        </span>
         <input
-          className="input-field flex-1 font-mono text-xs"
+          className="input-field flex-1 min-w-0"
           placeholder="fa-solid fa-folder"
           value={value || ''}
           onChange={e => onChange(e.target.value)}
+          aria-label="Font Awesome class"
         />
-        <button type="button" onClick={() => setOpen(v => !v)}
-                className="px-3 py-2 text-sm rounded-lg border border-steel-200 hover:bg-steel-50">
-          <FontAwesomeIcon icon={['fas', open ? 'chevron-up' : 'chevron-down']} className="mr-1" />
-          ตัวอย่าง
+        <button type="button" onClick={() => setOpen(v => !v)} className="btn-secondary w-full sm:w-auto" aria-expanded={open}>
+          <FontAwesomeIcon icon={['fas', 'icons']} />
+          เลือกจากตัวอย่าง
+          <FontAwesomeIcon icon={['fas', 'chevron-down']} className={`text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </button>
       </div>
+
+      {typed && !found && (
+        <p className="field-error flex items-center gap-1.5">
+          <FontAwesomeIcon icon={['fas', 'circle-question']} />
+          ไม่พบไอคอน “{typed}” — ตรวจสอบชื่อ class อีกครั้ง
+        </p>
+      )}
+
       {open && (
-        <div className="mt-2 grid grid-cols-9 gap-1 p-2 border border-steel-200 rounded-xl bg-navy-50 max-h-44 overflow-y-auto">
-          {ICON_PRESETS.map(ic => (
-            <button key={ic} type="button" onClick={() => { onChange(ic); setOpen(false) }}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center text-steel-700 hover:bg-brand/10 transition ${value === ic ? 'bg-brand/15 text-brand' : 'bg-white'}`}
-              title={ic}>
-              <FaIcon icon={ic} />
-            </button>
-          ))}
+        <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] gap-1.5 p-2 border border-slate-200 rounded-2xl bg-slate-50">
+          {ICON_PRESETS.map(ic => {
+            const active = typed === ic
+            return (
+              <button key={ic} type="button" onClick={() => { onChange(ic); setOpen(false) }}
+                className={`h-12 rounded-xl flex items-center justify-center text-lg transition-colors ${
+                  active ? 'bg-brand text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-brand-soft hover:text-brand'
+                }`}
+                title={ic} aria-label={ic}>
+                <FaIcon icon={ic} />
+              </button>
+            )
+          })}
         </div>
       )}
-      <p className="mt-1 text-xs text-steel-500">
-        ใส่ class string ของ Font Awesome (เช่น <code className="bg-steel-100 px-1 rounded">fa-solid fa-folder</code>) — ดูทั้งหมดได้ที่{' '}
-        <a href="https://fontawesome.com/search?o=r&m=free" target="_blank" rel="noreferrer" className="text-brand underline hover:text-navy-800">fontawesome.com</a>
+
+      <p className="field-hint">
+        ใส่ class ของ Font Awesome เช่น <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700">fa-solid fa-folder</span> — ดูทั้งหมดได้ที่{' '}
+        <a href="https://fontawesome.com/search?o=r&m=free" target="_blank" rel="noreferrer" className="text-brand font-medium underline hover:text-navy-700">fontawesome.com</a>
       </p>
     </div>
   )
 }
 
 // ────────── Searchable select (lightweight combo) ──────────
+// The option list renders inline (in the normal flow, pushing content down) so the
+// scrolling modal body never clips it.
 function SearchableSelect({
   value, onChange, options, loading, error,
   placeholder = 'ค้นหาแล้วเลือก…',
   emptyHint = 'ไม่พบรายการ',
   onRetry,
+  invalid = false,
 }) {
   const [open, setOpen]     = useState(false)
   const [query, setQuery]   = useState('')
   const [focusIdx, setFocusIdx] = useState(0)
+  const rootRef = useRef(null)
 
   // Resolve current selected option (value may be number or string)
   const selected = options.find(o => String(o.id) === String(value))
@@ -137,117 +212,124 @@ function SearchableSelect({
   // Reset focus when filter changes
   useEffect(() => { setFocusIdx(0) }, [query, open])
 
+  // Close when clicking anywhere outside the control
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e) => { if (rootRef.current && !rootRef.current.contains(e.target)) { setOpen(false); setQuery('') } }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const close = () => { setOpen(false); setQuery('') }
+  const pick  = (opt) => { onChange(opt.id); close() }
+
   const handleKey = (e) => {
     if (!open) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setFocusIdx(i => Math.min(i + 1, filtered.length - 1)) }
     else if (e.key === 'ArrowUp')   { e.preventDefault(); setFocusIdx(i => Math.max(i - 1, 0)) }
-    else if (e.key === 'Enter')     { e.preventDefault(); const opt = filtered[focusIdx]; if (opt) { onChange(opt.id); setOpen(false); setQuery('') } }
-    else if (e.key === 'Escape')    { setOpen(false) }
+    else if (e.key === 'Enter')     { e.preventDefault(); const opt = filtered[focusIdx]; if (opt) pick(opt) }
+    else if (e.key === 'Escape')    { e.stopPropagation(); close() } // don't let Esc also close the modal
   }
 
   return (
-    <div className="relative">
+    <div ref={rootRef} onKeyDown={handleKey}>
       {/* Trigger / value display */}
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
-        className={`input-field text-left flex items-center justify-between gap-2 ${open ? 'ring-1 ring-brand/20 border-brand' : ''}`}
+        onClick={() => (open ? close() : setOpen(true))}
+        aria-expanded={open}
+        className={`input-field text-left flex items-center justify-between gap-3 h-auto py-2 ${
+          open ? 'border-brand ring-4 ring-brand/10' : ''
+        } ${invalid && !open ? '!border-red-400' : ''}`}
       >
         {selected ? (
           <span className="flex-1 min-w-0">
-            <span className="block truncate font-medium text-steel-800">{selected.label}</span>
-            {selected.sublabel && <span className="block truncate text-xs text-steel-500">{selected.sublabel}</span>}
+            <span className="block truncate font-medium text-slate-800">{selected.label}</span>
+            {selected.sublabel && <span className="block truncate text-sm text-slate-500">{selected.sublabel}</span>}
           </span>
         ) : (
-          <span className="flex-1 text-steel-400">{placeholder}</span>
+          <span className="flex-1 text-slate-400">{placeholder}</span>
         )}
         <span className="flex items-center gap-2 flex-shrink-0">
           {selected && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-steel-100 text-steel-500">#{selected.id}</span>
+            <span className="text-sm tabular-nums px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">#{selected.id}</span>
           )}
-          <FontAwesomeIcon icon={['fas', open ? 'chevron-up' : 'chevron-down']} className="text-steel-400 text-xs" />
+          <FontAwesomeIcon icon={['fas', 'chevron-down']} className={`text-slate-400 text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </span>
       </button>
 
-      {/* Dropdown panel */}
+      {/* Inline option panel */}
       {open && (
-        <>
-          {/* click-out overlay */}
-          <div className="fixed inset-0 z-30" onClick={() => { setOpen(false); setQuery('') }} />
-          <div className="absolute z-40 mt-1 w-full bg-white rounded-xl border border-steel-200 shadow-lg overflow-hidden">
-            <div className="p-2 border-b border-steel-100">
-              <div className="relative">
-                <FontAwesomeIcon icon={['fas', 'magnifying-glass']} className="absolute left-3 top-1/2 -translate-y-1/2 text-steel-400 text-xs" />
-                <input
-                  autoFocus
-                  className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-steel-200 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/20"
-                  placeholder="พิมพ์เพื่อค้นหา…"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  onKeyDown={handleKey}
-                />
-              </div>
+        <div className="mt-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
+          <div className="p-2 border-b border-slate-100">
+            <div className="relative">
+              <FontAwesomeIcon icon={['fas', 'magnifying-glass']} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                autoFocus
+                className="input-field pl-11"
+                placeholder="พิมพ์เพื่อค้นหา…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              />
             </div>
+          </div>
 
-            <div className="max-h-64 overflow-y-auto py-1">
-              {loading && (
-                <div className="px-4 py-6 text-center text-sm text-steel-400">
-                  <FontAwesomeIcon icon={['fas', 'circle-notch']} spin className="mr-2" />
-                  กำลังโหลดข้อมูล…
-                </div>
-              )}
-              {!loading && error && (
-                <div className="px-4 py-6 text-center text-sm text-red-600">
-                  <FontAwesomeIcon icon={['fas', 'circle-exclamation']} className="mr-1" /> {error}
-                  {onRetry && (
-                    <button type="button" onClick={onRetry} className="block mx-auto mt-2 text-xs text-blue-600 underline">
-                      ลองโหลดอีกครั้ง
-                    </button>
-                  )}
-                </div>
-              )}
-              {!loading && !error && filtered.length === 0 && (
-                <div className="px-4 py-6 text-center text-sm text-steel-400">
-                  <FontAwesomeIcon icon={['fas', 'inbox']} className="mr-1" /> {emptyHint}
-                </div>
-              )}
-              {!loading && !error && filtered.map((o, idx) => {
-                const active = String(o.id) === String(value)
-                const focused = idx === focusIdx
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onMouseEnter={() => setFocusIdx(idx)}
-                    onClick={() => { onChange(o.id); setOpen(false); setQuery('') }}
-                    className={`w-full text-left px-3 py-2 flex items-start gap-2 transition ${
-                      active ? 'bg-brand/8' : focused ? 'bg-navy-50' : ''
-                    }`}
-                  >
-                    {o.icon && (
-                      <FaIcon icon={o.icon} className="mt-0.5 text-steel-500 w-4 text-center flex-shrink-0" />
-                    )}
-                    <span className="flex-1 min-w-0">
-                      <span className={`block truncate text-sm ${active ? 'font-semibold text-brand' : 'text-steel-800'}`}>
-                        {o.label}
-                      </span>
-                      {o.sublabel && <span className="block truncate text-xs text-steel-500">{o.sublabel}</span>}
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-steel-100 text-steel-400 flex-shrink-0">#{o.id}</span>
-                    {active && <FontAwesomeIcon icon={['fas', 'check']} className="text-brand text-xs mt-1 flex-shrink-0" />}
-                  </button>
-                )
-              })}
-            </div>
-
-            {!loading && !error && options.length > 0 && (
-              <div className="px-3 py-1.5 border-t border-steel-100 text-[10px] text-steel-400 bg-navy-50/60 flex items-center justify-between">
-                <span>{filtered.length} / {options.length} รายการ</span>
-                <span><kbd className="px-1 bg-white border rounded">↑↓</kbd> เลือก <kbd className="px-1 bg-white border rounded">Enter</kbd></span>
+          <div className="max-h-72 overflow-y-auto py-1">
+            {loading && (
+              <div className="px-4 py-6 text-center text-base text-slate-500">
+                <FontAwesomeIcon icon={['fas', 'circle-notch']} spin className="mr-2" />
+                กำลังโหลดข้อมูล…
               </div>
             )}
+            {!loading && error && (
+              <div className="px-4 py-6 text-center text-base text-red-600">
+                <FontAwesomeIcon icon={['fas', 'circle-exclamation']} className="mr-1.5" />{error}
+                {onRetry && (
+                  <div className="mt-3">
+                    <button type="button" onClick={onRetry} className="btn-secondary">
+                      <FontAwesomeIcon icon={['fas', 'rotate-right']} />ลองโหลดอีกครั้ง
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {!loading && !error && filtered.length === 0 && (
+              <div className="px-4 py-6 text-center text-base text-slate-500">
+                <FontAwesomeIcon icon={['fas', 'inbox']} className="mr-1.5" />{emptyHint}
+              </div>
+            )}
+            {!loading && !error && filtered.map((o, idx) => {
+              const active = String(o.id) === String(value)
+              const focused = idx === focusIdx
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onMouseEnter={() => setFocusIdx(idx)}
+                  onClick={() => pick(o)}
+                  className={`w-full min-h-[48px] text-left px-4 py-2 flex items-center gap-3 transition-colors ${
+                    active ? 'bg-brand-soft' : focused ? 'bg-slate-50' : ''
+                  }`}
+                >
+                  {o.icon && <FaIcon icon={o.icon} className="text-slate-500 w-5 text-center flex-shrink-0" />}
+                  <span className="flex-1 min-w-0">
+                    <span className={`block truncate text-base ${active ? 'font-semibold text-brand' : 'text-slate-800'}`}>{o.label}</span>
+                    {o.sublabel && <span className="block truncate text-sm text-slate-500">{o.sublabel}</span>}
+                  </span>
+                  <span className="text-sm tabular-nums px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 flex-shrink-0">#{o.id}</span>
+                  {active && <FontAwesomeIcon icon={['fas', 'check']} className="text-brand flex-shrink-0" />}
+                </button>
+              )
+            })}
           </div>
-        </>
+
+          {!loading && !error && options.length > 0 && (
+            <div className="px-4 py-2 border-t border-slate-100 text-sm text-slate-500 bg-slate-50 flex items-center justify-between gap-3">
+              <span>{filtered.length} / {options.length} รายการ</span>
+              <span className="hidden sm:inline">ใช้ปุ่ม ↑ ↓ เพื่อเลื่อน และ Enter เพื่อเลือก</span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -277,7 +359,7 @@ function useFolderOptions(enabled) {
         list.sort((a, b) => (a.sublabel || a.label).localeCompare(b.sublabel || b.label, 'th'))
         setOptions(list)
       })
-      .catch(e => { if (!abort) setError(e.response?.data?.error || e.response?.data?.message || 'โหลดรายการโฟลเดอร์ไม่สำเร็จ') })
+      .catch(e => { if (!abort) setError(apiError(e, 'โหลดรายการโฟลเดอร์ไม่สำเร็จ')) })
       .finally(() => { if (!abort) setLoading(false) })
     return () => { abort = true }
   }, [enabled, trigger])
@@ -300,35 +382,24 @@ function useKnowledgeOptions(enabled) {
         if (abort) return
         const menu = r.data?.data || []
         const list = []
+        const iconFor = (it) => it.displayMode === 'PDF' ? 'fa-solid fa-file-pdf'
+          : it.displayMode === 'LINK' ? 'fa-solid fa-link'
+          : 'fa-solid fa-file-lines'
         for (const l1 of menu) {
           // direct items under L1
           for (const it of (l1.directItems || [])) {
-            list.push({
-              id:       it.id,
-              label:    it.title,
-              sublabel: l1.name,
-              icon:     it.displayMode === 'PDF' ? 'fa-solid fa-file-pdf'
-                       : it.displayMode === 'LINK' ? 'fa-solid fa-link'
-                       : 'fa-solid fa-file-lines',
-            })
+            list.push({ id: it.id, label: it.title, sublabel: l1.name, icon: iconFor(it) })
           }
           for (const l2 of (l1.level2 || [])) {
             for (const it of (l2.items || [])) {
-              list.push({
-                id:       it.id,
-                label:    it.title,
-                sublabel: `${l1.name} › ${l2.name}`,
-                icon:     it.displayMode === 'PDF' ? 'fa-solid fa-file-pdf'
-                         : it.displayMode === 'LINK' ? 'fa-solid fa-link'
-                         : 'fa-solid fa-file-lines',
-              })
+              list.push({ id: it.id, label: it.title, sublabel: `${l1.name} › ${l2.name}`, icon: iconFor(it) })
             }
           }
         }
         list.sort((a, b) => a.label.localeCompare(b.label, 'th'))
         setOptions(list)
       })
-      .catch(e => { if (!abort) setError(e.response?.data?.error || 'โหลดรายการ Knowledge ไม่สำเร็จ') })
+      .catch(e => { if (!abort) setError(apiError(e, 'โหลดรายการ Knowledge ไม่สำเร็จ')) })
       .finally(() => { if (!abort) setLoading(false) })
     return () => { abort = true }
   }, [enabled, trigger])
@@ -336,95 +407,161 @@ function useKnowledgeOptions(enabled) {
   return { options, loading, error, reload: () => setTrigger(t => t + 1) }
 }
 
-function ColorPicker({ value, onChange }) {
+function ColorPicker({ value, onChange, invalid }) {
   const v = toHex(value)
   return (
     <div>
       <div className="flex items-center gap-2">
         <input type="color" value={v} onChange={e => onChange(e.target.value.toUpperCase())}
-               className="w-14 h-10 rounded cursor-pointer border border-steel-200" />
-        <input className="input-field flex-1 font-mono uppercase"
+               className="w-14 h-11 p-1 rounded-xl cursor-pointer border border-slate-200 bg-white flex-shrink-0"
+               aria-label="เลือกสี" />
+        <input className={`input-field flex-1 uppercase ${invalid ? '!border-red-400' : ''}`}
                value={value || ''} placeholder="#FFCC99"
-               onChange={e => onChange(e.target.value)} />
+               onChange={e => onChange(e.target.value)}
+               aria-label="รหัสสี HEX" />
       </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {COLOR_PRESETS.map(c => (
-          <button key={c} type="button" onClick={() => onChange(c)}
-            className={`w-7 h-7 rounded-md border-2 transition ${v.toLowerCase() === c.toLowerCase() ? 'border-steel-800 scale-110' : 'border-white shadow'}`}
-            style={{ backgroundColor: c }} title={c} />
-        ))}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {COLOR_PRESETS.map(c => {
+          const active = v.toLowerCase() === c.toLowerCase()
+          return (
+            <button key={c} type="button" onClick={() => onChange(c)}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-150 hover:scale-105 ${
+                active ? 'ring-2 ring-offset-2 ring-slate-700' : 'shadow-sm ring-1 ring-black/5'
+              }`}
+              style={{ backgroundColor: c, color: inkOn(c) }}
+              title={c} aria-label={`สี ${c}`} aria-pressed={active}>
+              {active && <FontAwesomeIcon icon={['fas', 'check']} />}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
 }
 
 // ────────── Group editor ──────────
-function GroupEditor({ group, onSave }) {
-  const [title, setTitle]       = useState(group.Title)
-  const [subtitle, setSubtitle] = useState(group.Subtitle || '')
-  const [icon, setIcon]         = useState(group.Icon || 'fa-solid fa-folder')
-  const [color, setColor]       = useState(toHex(group.Color))
-  const [enabled, setEnabled]   = useState(!!group.IsEnabled)
+// group = null → "add column" mode (POST); otherwise edits that group (PUT).
+function GroupEditor({ group, onSave, onCancel }) {
+  const isNew = !group
+  const [title, setTitle]       = useState(group?.Title || '')
+  const [subtitle, setSubtitle] = useState(group?.Subtitle || '')
+  const [icon, setIcon]         = useState(group?.Icon || 'fa-solid fa-folder')
+  const [color, setColor]       = useState(toHex(group?.Color))
+  const [enabled, setEnabled]   = useState(isNew ? true : !!group.IsEnabled)
   const [saving, setSaving]     = useState(false)
+  const [errors, setErrors]     = useState({})
   const { toast } = useToast()
 
   const handleSave = async () => {
-    if (!HEX_RE.test(color)) { toast({ message: 'กรุณาใส่สีในรูปแบบ HEX เช่น #FFCC99', type: 'error' }); return }
+    const errs = {}
+    if (!title.trim()) errs.title = 'กรุณากรอกชื่อหัวข้อ'
+    if (!HEX_RE.test(color)) errs.color = 'กรุณาใส่สีในรูปแบบ HEX เช่น #FFCC99'
+    setErrors(errs)
+    if (Object.keys(errs).length) { toast({ message: Object.values(errs)[0], type: 'error' }); return }
     setSaving(true)
     try {
-      await api.put(`/api/admin/home/groups/${group.Id}`, {
-        title, subtitle, icon, color: color.toUpperCase(),
-        sortOrder: group.SortOrder,
-        isEnabled: enabled,
-      })
-      toast({ message: 'บันทึกสำเร็จ', type: 'success' })
-      onSave?.()
+      // sortOrder is left out: position is changed only by the move up/down buttons
+      const payload = { title: title.trim(), subtitle, icon, color: color.toUpperCase(), isEnabled: enabled }
+      const r = isNew
+        ? await api.post('/api/admin/home/groups', payload)
+        : await api.put(`/api/admin/home/groups/${group.Id}`, payload)
+      toast({ message: isNew ? 'เพิ่มคอลัมน์สำเร็จ' : 'บันทึกการตั้งค่าคอลัมน์สำเร็จ', type: 'success' })
+      onSave?.(r.data)
     } catch (e) {
-      toast({ message: e.response?.data?.error || 'บันทึกไม่สำเร็จ', type: 'error' })
+      toast({ message: apiError(e, 'บันทึกไม่สำเร็จ'), type: 'error' })
     } finally { setSaving(false) }
   }
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-gradient-to-br from-navy-50 to-white rounded-2xl border border-steel-200">
-      <div className="md:col-span-2 flex items-center justify-between border-b border-steel-200 pb-3">
-        <h3 className="font-display font-semibold text-brand-ink"><FontAwesomeIcon icon={['fas', 'gear']} className="mr-2 text-brand" /> ตั้งค่า Group</h3>
-        <Toggle checked={enabled} onChange={setEnabled} label={enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'} />
+  const accent = toHex(color)
+
+  const fields = (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-5">
+      <div>
+        <label className="field-label" htmlFor={`g-title-${group?.Id ?? 'new'}`}>ชื่อหัวข้อ <span className="text-red-500">*</span></label>
+        <input id={`g-title-${group?.Id ?? 'new'}`} className={`input-field ${errors.title ? '!border-red-400' : ''}`}
+               value={title} placeholder="เช่น รายงานประจำวัน"
+               onChange={e => { setTitle(e.target.value); setErrors(p => ({ ...p, title: undefined })) }} />
+        <FieldError msg={errors.title} />
       </div>
-
-      <label className="text-sm">
-        <span className="font-semibold text-steel-700">ชื่อหัวข้อ *</span>
-        <input className="input-field mt-1" value={title} onChange={e => setTitle(e.target.value)} />
-      </label>
-      <label className="text-sm">
-        <span className="font-semibold text-steel-700">คำอธิบายย่อย</span>
-        <input className="input-field mt-1" value={subtitle} onChange={e => setSubtitle(e.target.value)} />
-      </label>
-
-      <div className="md:col-span-2">
-        <span className="font-semibold text-steel-700 text-sm">ไอคอน (Font Awesome)</span>
-        <div className="mt-1"><IconPicker value={icon} onChange={setIcon} /></div>
+      <div>
+        <label className="field-label" htmlFor={`g-sub-${group?.Id ?? 'new'}`}>คำอธิบายย่อย</label>
+        <input id={`g-sub-${group?.Id ?? 'new'}`} className="input-field" value={subtitle || ''}
+               placeholder="ข้อความสั้นๆ ใต้หัวข้อ (ถ้ามี)"
+               onChange={e => setSubtitle(e.target.value)} />
       </div>
 
       <div className="md:col-span-2">
-        <span className="font-semibold text-steel-700 text-sm">สีหัวข้อ (HEX)</span>
-        <div className="mt-1"><ColorPicker value={color} onChange={setColor} /></div>
+        <span className="field-label">ไอคอน (Font Awesome)</span>
+        <IconPicker value={icon} onChange={setIcon} accent={accent} />
       </div>
 
-      <div className="md:col-span-2 flex justify-end pt-3 border-t border-steel-200">
-        <button
-          className="btn-primary disabled:opacity-50"
-          disabled={saving} onClick={handleSave}>
-          {saving
-            ? <><FontAwesomeIcon icon={['fas', 'spinner']} spin />กำลังบันทึก...</>
-            : <><FontAwesomeIcon icon={['fas', 'floppy-disk']} />บันทึกการตั้งค่ากลุ่ม</>}
+      <div className="md:col-span-2">
+        <span className="field-label">สีประจำคอลัมน์ (HEX)</span>
+        <ColorPicker value={color} invalid={!!errors.color}
+                     onChange={(c) => { setColor(c); setErrors(p => ({ ...p, color: undefined })) }} />
+        <FieldError msg={errors.color} />
+        <p className="field-hint">ใช้เป็นสีหัวคอลัมน์และสีไอคอนของรายการบนหน้าแรก</p>
+      </div>
+
+      <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+        <Toggle checked={enabled} onChange={setEnabled} label={enabled ? 'เปิดใช้งาน — แสดงบนหน้าแรก' : 'ปิดใช้งาน — ซ่อนจากหน้าแรก'} />
+      </div>
+    </div>
+  )
+
+  const actions = (
+    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-5 mt-5 border-t border-slate-100">
+      {onCancel && (
+        <button type="button" className="btn-secondary" onClick={onCancel} disabled={saving}>
+          ยกเลิก
         </button>
+      )}
+      <button type="button" className="btn-primary" disabled={saving} onClick={handleSave}>
+        {saving
+          ? <><FontAwesomeIcon icon={['fas', 'circle-notch']} spin />กำลังบันทึก…</>
+          : isNew
+            ? <><FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มคอลัมน์</>
+            : <><FontAwesomeIcon icon={['fas', 'floppy-disk']} />บันทึกการตั้งค่าคอลัมน์</>}
+      </button>
+    </div>
+  )
+
+  if (isNew) {
+    return (
+      <div className="admin-card overflow-hidden animate-fade-in">
+        <div className="h-1.5 transition-colors" style={{ backgroundColor: accent }} />
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="w-11 h-11 rounded-xl flex items-center justify-center text-lg transition-colors"
+                  style={{ backgroundColor: accent, color: inkOn(accent) }}>
+              <FaIcon icon={icon} />
+            </span>
+            <div>
+              <h2 className="font-display font-bold text-xl text-slate-800">เพิ่มคอลัมน์ใหม่</h2>
+              <p className="text-sm text-slate-500">คอลัมน์ใหม่จะต่อท้ายรายการ — เปลี่ยนลำดับได้ภายหลังด้วยปุ่มลูกศร</p>
+            </div>
+          </div>
+          {fields}
+          {actions}
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <h3 className="font-display font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+        <FontAwesomeIcon icon={['fas', 'sliders']} className="text-brand" />
+        ตั้งค่าคอลัมน์
+      </h3>
+      {fields}
+      {actions}
     </div>
   )
 }
 
 // ────────── Item form modal ──────────
-function ItemForm({ groupId, initial, onClose, onSaved }) {
+function ItemForm({ open, groupId, groupTitle, groupColor, initial, onClose, onSaved }) {
   const isEdit = !!initial?.Id
   const [title, setTitle]             = useState(initial?.Title || '')
   const [subtitle, setSubtitle]       = useState(initial?.Subtitle || '')
@@ -435,23 +572,64 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
   const [knowledgeId, setKnowledgeId] = useState(initial?.KnowledgeId || '')
   const [externalUrl, setExternalUrl] = useState(initial?.ExternalUrl || '')
   const [enabled, setEnabled]         = useState(initial?.IsEnabled !== false)
+  const [pinned, setPinned]           = useState(!!initial?.IsPinned)
   const [sortOrder, setSortOrder]     = useState(initial?.SortOrder ?? 0)
   const [mappings, setMappings]       = useState(
     initial?.Mappings?.map(m => ({ adGroup: m.AdGroup, filePath: m.FilePath })) || []
   )
   const [saving, setSaving] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [errors, setErrors] = useState({}) // field → message (client check or server 400)
   const { toast } = useToast()
+
+  // Dirty tracking: compare the current form against a snapshot taken on mount.
+  const snapshot = () => JSON.stringify({
+    title, subtitle, icon, linkType, programType,
+    folderId: String(folderId ?? ''), knowledgeId: String(knowledgeId ?? ''),
+    externalUrl, enabled, pinned, sortOrder: String(sortOrder ?? ''), mappings,
+  })
+  const [initialSnap] = useState(snapshot)
+  const dirty = snapshot() !== initialSnap
 
   // Lazy-load options only when needed
   const folderQ    = useFolderOptions(linkType === 'folder')
   const knowledgeQ = useKnowledgeOptions(linkType === 'knowledge')
 
-  const addMapping = () => setMappings(prev => [...prev, { adGroup: '', filePath: '' }])
-  const updateMapping = (i, key, val) => setMappings(prev => prev.map((m, idx) => idx === i ? { ...m, [key]: val } : m))
+  const clearErr = (key) => setErrors(prev => (prev[key] ? { ...prev, [key]: undefined } : prev))
+  const addMapping = () => { setMappings(prev => [...prev, { adGroup: '', filePath: '' }]); clearErr('mappings') }
+  const updateMapping = (i, key, val) => { setMappings(prev => prev.map((m, idx) => idx === i ? { ...m, [key]: val } : m)); clearErr('mappings') }
   const removeMapping = (i) => setMappings(prev => prev.filter((_, idx) => idx !== i))
 
+  const isProgram = linkType === 'program' || linkType === 'program_group'
+
+  // Same rules as the backend: every linkType needs its target.
+  const validate = () => {
+    const errs = {}
+    if (!title.trim()) errs.title = 'กรุณากรอกชื่อรายการ'
+    if (linkType === 'folder' && !folderId) errs.folderId = 'กรุณาเลือกโฟลเดอร์'
+    if (linkType === 'knowledge' && !knowledgeId) errs.knowledgeId = 'กรุณาเลือก Knowledge Item'
+    if (linkType === 'external_link') {
+      const u = externalUrl.trim()
+      if (!u) errs.externalUrl = 'กรุณากรอก URL'
+      else if (!/^https?:\/\/\S+$/i.test(u)) errs.externalUrl = 'URL ต้องขึ้นต้นด้วย http:// หรือ https://'
+    }
+    if (isProgram) {
+      const partial = mappings.some(m => !m.adGroup.trim() !== !m.filePath.trim())
+      if (partial) errs.mappings = 'กรอก AD Group และ Path ให้ครบทุกแถว (หรือลบแถวที่ไม่ใช้)'
+      else if (!mappings.some(m => m.adGroup.trim() && m.filePath.trim())) {
+        errs.mappings = 'กรุณาเพิ่มการจับคู่ AD Group → Path อย่างน้อย 1 รายการ'
+      }
+    }
+    return errs
+  }
+
   const handleSave = async () => {
-    if (!title.trim()) { toast({ message: 'กรุณากรอกชื่อรายการ', type: 'error' }); return }
+    const clientErrs = validate()
+    setErrors(clientErrs)
+    if (Object.keys(clientErrs).length) {
+      toast({ message: Object.values(clientErrs)[0], type: 'error' })
+      return
+    }
     setSaving(true)
     try {
       const payload = {
@@ -466,423 +644,669 @@ function ItemForm({ groupId, initial, onClose, onSaved }) {
         externalUrl: linkType === 'external_link' ? externalUrl.trim() : null,
         sortOrder: Number(sortOrder) || 0,
         isEnabled: enabled,
-        mappings: (linkType === 'program' || linkType === 'program_group')
-          ? mappings.filter(m => m.adGroup && m.filePath)
+        isPinned: pinned,
+        mappings: isProgram
+          ? mappings
+              .map(m => ({ adGroup: m.adGroup.trim(), filePath: m.filePath.trim() }))
+              .filter(m => m.adGroup && m.filePath)
           : [],
       }
       if (isEdit) await api.put(`/api/admin/home/items/${initial.Id}`, payload)
       else        await api.post('/api/admin/home/items', payload)
-      toast({ message: 'บันทึกสำเร็จ', type: 'success' })
+      toast({ message: isEdit ? 'บันทึกการแก้ไขสำเร็จ' : 'เพิ่มรายการสำเร็จ', type: 'success' })
       onSaved?.()
       onClose?.()
     } catch (e) {
-      toast({ message: e.response?.data?.error || 'บันทึกไม่สำเร็จ', type: 'error' })
+      // Server 400 → { error, errors: [{ path, msg }] } — show next to the field
+      const serverErrs = {}
+      for (const er of e.response?.data?.errors || []) {
+        const key = String(er.path || '').startsWith('mappings') ? 'mappings' : er.path
+        if (key && !serverErrs[key]) serverErrs[key] = er.msg
+      }
+      setErrors(serverErrs)
+      toast({ message: apiError(e, 'บันทึกไม่สำเร็จ'), type: 'error' })
     } finally { setSaving(false) }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-brand-ink/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-5xl my-4 shadow-panel overflow-hidden">
-        {/* Header */}
-        <div className="px-7 py-5 border-b border-steel-200 flex items-center justify-between bg-gradient-to-r from-brand to-navy-700">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur text-white flex items-center justify-center text-lg ring-1 ring-white/20">
-              <FontAwesomeIcon icon={['fas', isEdit ? 'pen-to-square' : 'plus']} />
-            </div>
-            <div>
-              <h3 className="font-display font-bold text-xl text-white">{isEdit ? 'แก้ไขรายการ' : 'เพิ่มรายการใหม่'}</h3>
-              <p className="text-xs text-navy-100">กรอกข้อมูลให้ครบและกดบันทึก</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full text-white/80 hover:bg-white/15 hover:text-white transition">
-            <FontAwesomeIcon icon={['fas', 'xmark']} />
-          </button>
-        </div>
+  // Esc / backdrop / X / ยกเลิก all come here; ask before throwing away edits.
+  const requestClose = () => {
+    if (saving || confirmDiscard) return
+    if (dirty) setConfirmDiscard(true)
+    else onClose?.()
+  }
 
-        {/* Body */}
-        <div className="px-7 py-6 space-y-6 max-h-[78vh] overflow-y-auto bg-navy-50/30">
+  const color = toHex(groupColor)
+  const activeType = LINK_TYPES.find(t => t.value === linkType)
+
+  const headerIcon = (
+    <span className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+          style={{ backgroundColor: rgba(color, 0.14), color: accentText(color) }}>
+      <FontAwesomeIcon icon={['fas', isEdit ? 'pen-to-square' : 'plus']} />
+    </span>
+  )
+
+  const footer = (
+    <>
+      <span className="mr-auto self-center text-sm text-slate-500 hidden sm:inline">
+        {dirty ? <><FontAwesomeIcon icon={['fas', 'circle']} className="text-[8px] text-amber-500 mr-2 align-middle" />มีการแก้ไขที่ยังไม่บันทึก</> : null}
+      </span>
+      <button type="button" className="btn-secondary" onClick={requestClose} disabled={saving}>
+        ยกเลิก
+      </button>
+      <button type="button" className="btn-primary" disabled={saving} onClick={handleSave}>
+        {saving
+          ? <><FontAwesomeIcon icon={['fas', 'circle-notch']} spin />กำลังบันทึก…</>
+          : <><FontAwesomeIcon icon={['fas', 'check']} />{isEdit ? 'บันทึกการแก้ไข' : 'เพิ่มรายการ'}</>}
+      </button>
+    </>
+  )
+
+  return (
+    <>
+      <Modal
+        isOpen={open}
+        onClose={requestClose}
+        busy={saving}
+        size="xl"
+        icon={headerIcon}
+        title={isEdit ? 'แก้ไขรายการ' : 'เพิ่มรายการใหม่'}
+        subtitle={groupTitle ? `ในคอลัมน์ “${groupTitle}”` : 'กรอกข้อมูลให้ครบแล้วกดบันทึก'}
+        footer={footer}
+      >
+        <div className="space-y-6">
           {/* Section 1: ข้อมูลทั่วไป */}
-          <section className="bg-white rounded-2xl border border-steel-200 p-5 shadow-sm">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-[11px] flex items-center justify-center font-display">1</span>
-              ข้อมูลทั่วไป
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="text-sm md:col-span-2">
-                <span className="font-semibold text-steel-700">ชื่อรายการ *</span>
-                <input className="input-field mt-1" value={title} onChange={e => setTitle(e.target.value)} placeholder="เช่น Power BI - Production Dashboard" />
-              </label>
-              <label className="text-sm md:col-span-2">
-                <span className="font-semibold text-steel-700">คำอธิบายย่อย (ถ้ามี)</span>
-                <input className="input-field mt-1" value={subtitle} onChange={e => setSubtitle(e.target.value)} />
-              </label>
+          <FormSection step={1} title="ข้อมูลทั่วไป" description="ชื่อ คำอธิบาย และไอคอนที่ผู้ใช้จะเห็นบนหน้าแรก">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="field-label" htmlFor="item-title">ชื่อรายการ <span className="text-red-500">*</span></label>
+                <input id="item-title" className={`input-field ${errors.title ? '!border-red-400' : ''}`} value={title}
+                       onChange={e => { setTitle(e.target.value); clearErr('title') }}
+                       placeholder="เช่น Power BI - Production Dashboard" />
+                <FieldError msg={errors.title} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="item-subtitle">คำอธิบายย่อย (ถ้ามี)</label>
+                <input id="item-subtitle" className="input-field" value={subtitle} onChange={e => setSubtitle(e.target.value)} />
+              </div>
               <div className="md:col-span-2">
-                <span className="font-semibold text-sm text-steel-700">ไอคอน</span>
-                <div className="mt-1"><IconPicker value={icon} onChange={setIcon} /></div>
+                <span className="field-label">ไอคอน</span>
+                <IconPicker value={icon} onChange={setIcon} accent={color} />
               </div>
             </div>
-          </section>
+          </FormSection>
 
           {/* Section 2: ประเภทลิงก์ */}
-          <section className="bg-white rounded-2xl border border-steel-200 p-5 shadow-sm">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-[11px] flex items-center justify-center font-display">2</span>
-              ประเภทลิงก์
-            </h4>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {LINK_TYPES.map(t => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setLinkType(t.value)}
-                  className={`p-4 rounded-2xl border-2 text-center transition ${linkType === t.value ? 'border-brand bg-brand/5 text-brand shadow-sm' : 'border-steel-200 hover:border-brand/40 bg-white text-steel-600'}`}
-                >
-                  <FaIcon icon={t.icon} className="text-2xl mb-1" />
-                  <div className="text-xs font-semibold">{t.label}</div>
-                </button>
-              ))}
+          <FormSection step={2} title="ประเภทลิงก์" description="เมื่อผู้ใช้คลิกรายการนี้ จะให้เกิดอะไรขึ้น">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" role="radiogroup" aria-label="ประเภทลิงก์">
+              {LINK_TYPES.map(t => {
+                const active = linkType === t.value
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setLinkType(t.value)}
+                    className={`min-h-[96px] p-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 text-center transition-all duration-200 ${
+                      active ? 'border-brand bg-brand-soft text-brand shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-brand/40 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FaIcon icon={t.icon} className="text-2xl" />
+                    <span className="text-base font-semibold leading-tight">{t.label}</span>
+                  </button>
+                )
+              })}
             </div>
-            <p className="mt-3 text-xs text-steel-500">
-              <FontAwesomeIcon icon={['fas', 'circle-info']} className="mr-1 text-brand" />
-              {LINK_TYPES.find(t => t.value === linkType)?.hint}
-            </p>
-          </section>
+            {activeType && (
+              <p className="field-hint flex items-start gap-2">
+                <FontAwesomeIcon icon={['fas', 'circle-info']} className="mt-1 text-brand flex-shrink-0" />
+                <span>{activeType.hint}</span>
+              </p>
+            )}
+          </FormSection>
 
           {/* Section 3: ตั้งค่าตามประเภท */}
-          <section className="bg-white rounded-2xl border border-steel-200 p-5 shadow-sm">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-[11px] flex items-center justify-center font-display">3</span>
-              ตั้งค่ารายละเอียด
-            </h4>
-
-            {(linkType === 'program' || linkType === 'program_group') && (
-              <div className="space-y-4 p-4 bg-navy-50 rounded-xl border border-navy-100">
+          <FormSection step={3} title="ตั้งค่าปลายทาง" description={activeType ? `รายละเอียดสำหรับ “${activeType.label}”` : undefined}>
+            {isProgram && (
+              <div className="space-y-6">
                 <div>
-                  <span className="font-semibold text-sm text-steel-700">ชนิดโปรแกรม</span>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+                  <span className="field-label">ชนิดโปรแกรม</span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {PROGRAM_TYPES.map(p => (
                       <button key={p.value} type="button" onClick={() => setProgramType(p.value)}
-                        className={`px-3 py-2 rounded-xl text-sm font-medium transition ${programType === p.value ? 'bg-brand text-white shadow-sm' : 'bg-white border border-steel-200 hover:border-brand/40 text-steel-700'}`}>
-                        <FaIcon icon={p.icon} className="mr-2" />{p.label}
+                        aria-pressed={programType === p.value}
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-base font-medium flex items-center justify-center gap-2 transition-colors ${
+                          programType === p.value ? 'bg-brand text-white shadow-sm' : 'bg-white border border-slate-200 hover:border-brand/40 hover:bg-slate-50 text-slate-700'
+                        }`}>
+                        <FaIcon icon={p.icon} />{p.label}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className="font-semibold text-sm text-steel-700">
-                        {linkType === 'program_group' ? 'การจับคู่ AD Group → Folder Path' : 'การจับคู่ AD Group → File Path'}
-                      </span>
-                      <p className="text-xs text-steel-500">
-                        {linkType === 'program_group'
-                          ? 'ชี้ path ไปยังโฟลเดอร์ — เมื่อ user คลิก ระบบจะแสดงไฟล์ทั้งหมดในโฟลเดอร์ให้เลือกเปิด'
-                          : 'ผู้ใช้ในกลุ่มที่ตรงกันจะเปิดไฟล์ที่กำหนด (ใช้รายการแรกที่ตรง)'}
-                      </p>
-                    </div>
-                    <button type="button" onClick={addMapping}
-                      className="px-3 py-1.5 text-xs rounded-xl bg-brand hover:bg-navy-800 text-white font-medium shadow-sm transition">
-                      <FontAwesomeIcon icon={['fas', 'plus']} className="mr-1" />เพิ่ม
-                    </button>
+                  <span className="field-label">
+                    {linkType === 'program_group' ? 'การจับคู่ AD Group → Folder Path' : 'การจับคู่ AD Group → File Path'}
+                    <span className="text-red-500"> *</span>
+                  </span>
+                  <div className="rounded-2xl bg-brand-soft/60 border border-brand/10 px-4 py-3 mb-3 text-sm text-slate-600 leading-relaxed">
+                    {linkType === 'program_group' ? (
+                      <p>ชี้ path ไปยังโฟลเดอร์ — เมื่อผู้ใช้คลิก ระบบจะแสดงไฟล์ทั้งหมดในโฟลเดอร์ให้เลือกเปิด</p>
+                    ) : (
+                      <>
+                        <p className="mb-1.5">ผู้ใช้ในกลุ่มที่ตรงกันจะเปิดไฟล์ที่กำหนด (ใช้แถวแรกที่ตรง) — Path รองรับ 3 แบบ:</p>
+                        <ul className="list-disc pl-5 space-y-0.5">
+                          <li>ไฟล์ตรงตัว — ถ้าไฟล์ถูกเปลี่ยนชื่อ ระบบจะหาไฟล์ที่ใกล้เคียงที่สุดในโฟลเดอร์เดียวกันให้อัตโนมัติ</li>
+                          <li>โฟลเดอร์ (ลงท้ายด้วย <span className="font-mono">\</span>) — เปิดไฟล์ที่แก้ไขล่าสุด</li>
+                          <li>Wildcard เช่น <span className="font-mono">L1-2-Data*.xlsm</span> — เปิดไฟล์ที่ตรงรูปแบบและแก้ไขล่าสุด</li>
+                        </ul>
+                      </>
+                    )}
                   </div>
 
                   {mappings.length === 0 ? (
-                    <div className="text-center text-xs text-steel-400 py-5 border border-dashed border-steel-300 rounded-xl bg-white">
-                      ยังไม่มีการจับคู่ — กดปุ่ม "เพิ่ม"
+                    <div className="text-center text-base text-slate-500 py-6 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/60">
+                      ยังไม่มีการจับคู่ — กด “เพิ่มการจับคู่” ด้านล่าง
                     </div>
                   ) : (
                     <div className="space-y-2">
+                      {/* Column captions (desktop) */}
+                      <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2 pr-12 text-sm font-semibold text-slate-500">
+                        <span>AD Group</span>
+                        <span>{linkType === 'program_group' ? 'Folder Path' : 'File Path'}</span>
+                      </div>
                       {mappings.map((m, i) => (
-                        <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-4">
-                            <input className="input-field text-xs"
-                              placeholder="AD Group (เช่น dt-staff)"
-                              value={m.adGroup}
-                              onChange={e => updateMapping(i, 'adGroup', e.target.value)} />
-                          </div>
-                          <div className="col-span-7">
-                            <input className="input-field text-xs font-mono"
-                              placeholder={linkType === 'program_group' ? '\\\\server\\share\\reports-folder' : '\\\\server\\share\\file.pbix'}
-                              value={m.filePath}
-                              onChange={e => updateMapping(i, 'filePath', e.target.value)} />
+                        <div key={i} className="flex items-start gap-2 p-3 md:p-0 rounded-2xl md:rounded-none border md:border-0 border-slate-200 bg-slate-50/60 md:bg-transparent">
+                          <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
+                            <div>
+                              <span className="md:hidden block text-sm font-semibold text-slate-500 mb-1">AD Group</span>
+                              <input className="input-field font-mono"
+                                placeholder="เช่น dt-staff"
+                                aria-label={`AD Group แถวที่ ${i + 1}`}
+                                value={m.adGroup}
+                                onChange={e => updateMapping(i, 'adGroup', e.target.value)} />
+                            </div>
+                            <div>
+                              <span className="md:hidden block text-sm font-semibold text-slate-500 mb-1">
+                                {linkType === 'program_group' ? 'Folder Path' : 'File Path'}
+                              </span>
+                              <input className="input-field font-mono"
+                                placeholder={linkType === 'program_group' ? '\\\\server\\share\\reports-folder' : '\\\\server\\share\\file.pbix'}
+                                aria-label={`Path แถวที่ ${i + 1}`}
+                                value={m.filePath}
+                                onChange={e => updateMapping(i, 'filePath', e.target.value)} />
+                            </div>
                           </div>
                           <button type="button" onClick={() => removeMapping(i)}
-                            className="col-span-1 w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center">
-                            <FontAwesomeIcon icon={['fas', 'trash']} />
+                            className="btn-icon btn-icon-danger mt-0.5" title="ลบแถวนี้" aria-label={`ลบแถวที่ ${i + 1}`}>
+                            <FontAwesomeIcon icon={['fas', 'trash-can']} />
                           </button>
                         </div>
                       ))}
                     </div>
                   )}
+                  <FieldError msg={errors.mappings} />
+                  <button type="button" onClick={addMapping} className="btn-secondary mt-3">
+                    <FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มการจับคู่
+                  </button>
                 </div>
               </div>
             )}
 
             {linkType === 'folder' && (
-              <div className="text-sm p-4 bg-navy-50 rounded-xl border border-navy-100">
-                <span className="font-semibold block mb-1 text-steel-700">เลือกโฟลเดอร์ *</span>
+              <div>
+                <span className="field-label">เลือกโฟลเดอร์ <span className="text-red-500">*</span></span>
                 <SearchableSelect
                   value={folderId}
-                  onChange={(id) => setFolderId(id)}
+                  onChange={(id) => { setFolderId(id); clearErr('folderId') }}
                   options={folderQ.options}
                   loading={folderQ.loading}
                   error={folderQ.error}
                   onRetry={folderQ.reload}
+                  invalid={!!errors.folderId}
                   placeholder="ค้นหาโฟลเดอร์… (พิมพ์ชื่อหรือ path)"
                   emptyHint="ไม่พบโฟลเดอร์ที่ตรงคำค้น"
                 />
-                <span className="text-xs text-steel-500 mt-2 block">
-                  <FontAwesomeIcon icon={['fas', 'circle-info']} className="mr-1 text-brand" />
-                  ค้นด้วยชื่อหรือ Full Path ของโฟลเดอร์
-                </span>
+                <FieldError msg={errors.folderId} />
+                <p className="field-hint">ค้นหาได้ด้วยชื่อหรือ Full Path ของโฟลเดอร์</p>
               </div>
             )}
 
             {linkType === 'knowledge' && (
-              <div className="text-sm p-4 bg-navy-50 rounded-xl border border-navy-100">
-                <span className="font-semibold block mb-1 text-steel-700">เลือก Knowledge Item *</span>
+              <div>
+                <span className="field-label">เลือก Knowledge Item <span className="text-red-500">*</span></span>
                 <SearchableSelect
                   value={knowledgeId}
-                  onChange={(id) => setKnowledgeId(id)}
+                  onChange={(id) => { setKnowledgeId(id); clearErr('knowledgeId') }}
                   options={knowledgeQ.options}
                   loading={knowledgeQ.loading}
                   error={knowledgeQ.error}
                   onRetry={knowledgeQ.reload}
+                  invalid={!!errors.knowledgeId}
                   placeholder="ค้นหา Knowledge… (พิมพ์ชื่อหรือหมวด)"
                   emptyHint="ไม่พบ Knowledge ที่ตรงคำค้น"
                 />
-                <span className="text-xs text-steel-500 mt-2 block">
-                  <FontAwesomeIcon icon={['fas', 'circle-info']} className="mr-1 text-brand" />
-                  ค้นด้วยชื่อหัวข้อหรือชื่อหมวด (Level 1 / Level 2)
-                </span>
+                <FieldError msg={errors.knowledgeId} />
+                <p className="field-hint">ค้นหาได้ด้วยชื่อหัวข้อหรือชื่อหมวด (Level 1 / Level 2)</p>
               </div>
             )}
 
             {linkType === 'external_link' && (
-              <div className="text-sm p-4 bg-navy-50 rounded-xl border border-navy-100">
-                <span className="font-semibold block mb-1 text-steel-700">URL *</span>
-                <input className="input-field" value={externalUrl} onChange={e => setExternalUrl(e.target.value)} placeholder="https://example.com" />
-                <span className="text-xs text-steel-500 mt-2 block">
-                  <FontAwesomeIcon icon={['fas', 'circle-info']} className="mr-1 text-brand" />
-                  ลิงก์จะถูกเปิดในแท็บใหม่
-                </span>
+              <div>
+                <label className="field-label" htmlFor="item-url">URL <span className="text-red-500">*</span></label>
+                <input id="item-url" type="url" inputMode="url"
+                       className={`input-field ${errors.externalUrl ? '!border-red-400' : ''}`}
+                       value={externalUrl}
+                       onChange={e => { setExternalUrl(e.target.value); clearErr('externalUrl') }}
+                       placeholder="https://example.com" />
+                <FieldError msg={errors.externalUrl} />
+                <p className="field-hint">ลิงก์จะเปิดในแท็บใหม่ — รองรับเฉพาะ http:// และ https://</p>
               </div>
             )}
-          </section>
+          </FormSection>
 
-          {/* Section 4: ตัวเลือกอื่น */}
-          <section className="bg-white rounded-2xl border border-steel-200 p-5 shadow-sm">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-brand mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-[11px] flex items-center justify-center font-display">4</span>
-              ตัวเลือกอื่น
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <label className="text-sm">
-                <span className="font-semibold text-steel-700">ลำดับการแสดง</span>
-                <input type="number" className="input-field mt-1" value={sortOrder} onChange={e => setSortOrder(e.target.value)} />
-                <span className="text-xs text-steel-500">เลขน้อยมาก่อน</span>
-              </label>
-              <div className="text-sm">
-                <span className="font-semibold block mb-2 text-steel-700">สถานะ</span>
-                <Toggle checked={enabled} onChange={setEnabled} label={enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'} />
+          {/* Section 4: การแสดงผล */}
+          <FormSection step={4} title="การแสดงผล" description="ลำดับ สถานะ และการแสดงบนหน้าแรก">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="field-label" htmlFor="item-sort">ลำดับการแสดง</label>
+                <input id="item-sort" type="number" className="input-field" value={sortOrder} onChange={e => setSortOrder(e.target.value)} />
+                <p className="field-hint">เลขน้อยแสดงก่อน</p>
+              </div>
+              <div>
+                <span className="field-label">สถานะ</span>
+                <div className="min-h-[44px] flex items-center">
+                  <Toggle checked={enabled} onChange={setEnabled} label={enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน (ไม่แสดงบนหน้าแรก)'} />
+                </div>
+              </div>
+              <div className={`md:col-span-2 rounded-2xl border px-4 py-4 transition-colors ${pinned ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-slate-50/70'}`}>
+                <Toggle checked={pinned} onChange={setPinned} label={<span className="font-semibold">แสดงตั้งแต่แรก</span>} />
+                <p className="field-hint">
+                  {pinned
+                    ? 'รายการนี้จะแสดงในคอลัมน์ทันทีโดยไม่ต้องกด “แสดงเพิ่มเติม”'
+                    : 'ค่าเริ่มต้น: รายการจะถูกซ่อนไว้ใต้ปุ่ม “แสดงเพิ่มเติม” (Show more) ของคอลัมน์ — เปิดตัวเลือกนี้หากต้องการให้แสดงทันที'}
+                </p>
               </div>
             </div>
-          </section>
+          </FormSection>
         </div>
+      </Modal>
 
-        {/* Footer */}
-        <div className="px-7 py-4 border-t border-steel-200 flex justify-between bg-white">
-          <button className="btn-ghost" onClick={onClose}>
-            <FontAwesomeIcon icon={['fas', 'xmark']} />ยกเลิก
-          </button>
-          <button
-            className="btn-primary disabled:opacity-50"
-            disabled={saving} onClick={handleSave}>
-            {saving
-              ? <><FontAwesomeIcon icon={['fas', 'spinner']} spin />กำลังบันทึก...</>
-              : <><FontAwesomeIcon icon={['fas', 'check']} />{isEdit ? 'บันทึกการแก้ไข' : 'เพิ่มรายการ'}</>}
-          </button>
-        </div>
-      </div>
-    </div>
+      <ConfirmDialog
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        onConfirm={() => { setConfirmDiscard(false); onClose?.() }}
+        title="ทิ้งการแก้ไข?"
+        message="ข้อมูลที่กรอกไว้ในฟอร์มนี้ยังไม่ได้บันทึก หากปิดตอนนี้การแก้ไขทั้งหมดจะหายไป"
+        confirmText="ทิ้งการแก้ไข"
+        cancelText="กลับไปแก้ไขต่อ"
+        isDangerous
+      />
+    </>
   )
 }
 
 // ────────── Items list (per group) ──────────
-function ItemsList({ items, onEdit, onDelete }) {
+function targetSummary(it) {
+  const prog = PROGRAM_TYPES.find(p => p.value === it.ProgramType)?.label || it.ProgramType || ''
+  const n = it.Mappings?.length || 0
+  switch (it.LinkType) {
+    case 'program':       return { icon: 'users',       text: `${prog} · จับคู่ ${n} กลุ่ม AD` }
+    case 'program_group': return { icon: 'folder-tree', text: `${prog} · ${n} โฟลเดอร์ตามกลุ่ม AD` }
+    case 'folder':        return { icon: 'folder',      text: `โฟลเดอร์ #${it.FolderId ?? '-'}` }
+    case 'knowledge':     return { icon: 'book',        text: `Knowledge #${it.KnowledgeId ?? '-'}` }
+    case 'external_link': return { icon: 'link',        text: it.ExternalUrl || '-' }
+    default:              return { icon: 'circle-question', text: '-' }
+  }
+}
+
+function ItemsList({ items, color, onEdit, onDelete, onAdd }) {
   if (!items?.length) {
     return (
-      <div className="text-center py-8 text-steel-400 border border-dashed border-steel-300 rounded-lg">
-        <FontAwesomeIcon icon={['fas', 'box-open']} className="text-3xl mb-2 opacity-50" />
-        <div className="text-sm">ยังไม่มีรายการในกลุ่มนี้</div>
+      <div className="text-center py-8 px-4 border-2 border-dashed border-slate-200 rounded-2xl">
+        <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+          <FontAwesomeIcon icon={['fas', 'box-open']} />
+        </div>
+        <p className="text-base text-slate-500">ยังไม่มีรายการในคอลัมน์นี้</p>
+        <button type="button" onClick={onAdd} className="btn-secondary mt-4">
+          <FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มรายการแรก
+        </button>
       </div>
     )
   }
+  const chipBg = rgba(color, 0.14)
+  const chipFg = accentText(color)
   return (
-    <div className="space-y-2">
-      {items.map(it => (
-        <div key={it.Id}
-             className="flex items-center gap-3 px-3 py-2.5 bg-white border border-steel-200 rounded-xl hover:border-brand/40 hover:shadow-sm transition group">
-          <div className="w-10 h-10 rounded-xl bg-navy-50 flex items-center justify-center text-brand">
-            <FaIcon icon={it.Icon} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm text-steel-800 truncate">{it.Title}</span>
-              {!it.IsEnabled && <span className="text-[10px] px-1.5 py-0.5 rounded bg-steel-200 text-steel-600">ปิด</span>}
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand/8 text-brand font-medium">
-                {LINK_TYPES.find(t => t.value === it.LinkType)?.label || it.LinkType}
-              </span>
+    <ul className="space-y-2">
+      {items.map(it => {
+        const type = LINK_TYPES.find(t => t.value === it.LinkType)
+        const target = targetSummary(it)
+        return (
+          <li key={it.Id}
+              className={`flex items-center gap-3 p-3 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition-all duration-200 ${
+                it.IsEnabled ? '' : 'bg-slate-50/80'
+              }`}>
+            <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${it.IsEnabled ? '' : 'opacity-50'}`}
+                  style={{ backgroundColor: chipBg, color: chipFg }}>
+              <FaIcon icon={it.Icon} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`font-semibold text-base truncate max-w-full ${it.IsEnabled ? 'text-slate-800' : 'text-slate-500'}`}>{it.Title}</span>
+                <Badge className="bg-brand-soft text-brand">
+                  {type && <FaIcon icon={type.icon} className="text-xs" />}
+                  {type?.label || it.LinkType}
+                </Badge>
+                {it.IsPinned && <Badge icon="thumbtack" className="bg-amber-50 text-amber-700 border border-amber-200">แสดงตั้งแต่แรก</Badge>}
+                {!it.IsEnabled && <Badge icon="eye-slash" className="bg-slate-200 text-slate-600">ปิดใช้งาน</Badge>}
+              </div>
+              <div className="mt-1 text-sm text-slate-500 flex items-center gap-1.5 min-w-0">
+                <FontAwesomeIcon icon={['fas', target.icon]} className="flex-shrink-0 text-slate-400" />
+                <span className="truncate">{target.text}</span>
+                <span className="flex-shrink-0 text-slate-400">· ลำดับ {it.SortOrder ?? 0}</span>
+              </div>
             </div>
-            <div className="text-xs text-steel-500 truncate mt-0.5">
-              {it.LinkType === 'program' && `${it.ProgramType || ''} · ${it.Mappings?.length || 0} mappings`}
-              {it.LinkType === 'program_group' && `${it.ProgramType || ''} · ${it.Mappings?.length || 0} folders`}
-              {it.LinkType === 'folder' && `Folder #${it.FolderId}`}
-              {it.LinkType === 'knowledge' && `Knowledge #${it.KnowledgeId}`}
-              {it.LinkType === 'external_link' && it.ExternalUrl}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button type="button" onClick={() => onEdit(it)} className="btn-icon" title="แก้ไขรายการ" aria-label={`แก้ไข ${it.Title}`}>
+                <FontAwesomeIcon icon={['fas', 'pen-to-square']} />
+              </button>
+              <button type="button" onClick={() => onDelete(it)} className="btn-icon btn-icon-danger" title="ลบรายการ" aria-label={`ลบ ${it.Title}`}>
+                <FontAwesomeIcon icon={['fas', 'trash-can']} />
+              </button>
             </div>
-          </div>
-          <div className="text-xs text-steel-400 px-2 font-mono">#{it.SortOrder}</div>
-          <button onClick={() => onEdit(it)}
-            className="px-3 py-1.5 text-xs rounded-lg text-brand hover:bg-brand/10 font-medium opacity-0 group-hover:opacity-100 transition">
-            <FontAwesomeIcon icon={['fas', 'pen-to-square']} className="mr-1" />แก้ไข
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+// ────────── Group card ──────────
+function GroupCard({ group: g, index, total, isOpen, busy, deleting, onToggle, onMove, onDelete, onSaved, onAddItem, onEditItem, onDeleteItem }) {
+  const color = toHex(g.Color)
+  const count = g.Items?.length || 0
+  return (
+    <article className="admin-card overflow-hidden">
+      <div className="h-1.5" style={{ backgroundColor: color }} />
+      <div className="flex flex-col md:flex-row md:items-center gap-3 p-4 sm:p-5">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          className="flex-1 min-w-0 flex items-center gap-4 text-left rounded-2xl -m-2 p-2 hover:bg-slate-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/20"
+        >
+          <span className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-xl shadow-sm"
+                style={{ backgroundColor: color, color: inkOn(color) }}>
+            <FaIcon icon={g.Icon || 'fa-solid fa-folder'} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="font-display font-bold text-lg text-slate-800 leading-tight">{g.Title}</span>
+              <Badge style={{ backgroundColor: rgba(color, 0.12), color: accentText(color) }}>{count} รายการ</Badge>
+              {g.IsEnabled
+                ? <Badge icon="circle-check" className="bg-emerald-50 text-emerald-700">เปิดใช้งาน</Badge>
+                : <Badge icon="eye-slash" className="bg-slate-200 text-slate-600">ปิดอยู่</Badge>}
+            </span>
+            {g.Subtitle && <span className="block text-base text-slate-500 mt-0.5 truncate">{g.Subtitle}</span>}
+          </span>
+          <FontAwesomeIcon icon={['fas', 'chevron-down']}
+                           className={`text-slate-400 flex-shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {/* Column actions: order, settings, delete — always visible */}
+        <div className="flex items-center gap-1 self-end md:self-auto md:pl-3 md:border-l md:border-slate-100">
+          <span className="text-sm text-slate-400 tabular-nums px-2 hidden sm:inline">ลำดับ {index + 1}/{total}</span>
+          <button type="button" title="เลื่อนขึ้น" aria-label="เลื่อนขึ้น" className="btn-icon"
+            disabled={busy || index === 0} onClick={() => onMove(-1)}>
+            <FontAwesomeIcon icon={['fas', 'arrow-up']} />
           </button>
-          <button onClick={() => onDelete(it)}
-            className="px-3 py-1.5 text-xs rounded-lg text-red-600 hover:bg-red-50 font-medium opacity-0 group-hover:opacity-100 transition">
-            <FontAwesomeIcon icon={['fas', 'trash']} className="mr-1" />ลบ
+          <button type="button" title="เลื่อนลง" aria-label="เลื่อนลง" className="btn-icon"
+            disabled={busy || index === total - 1} onClick={() => onMove(1)}>
+            <FontAwesomeIcon icon={['fas', 'arrow-down']} />
+          </button>
+          <button type="button" title="ตั้งค่าคอลัมน์" aria-label="ตั้งค่าคอลัมน์" aria-pressed={isOpen}
+            className={`btn-icon ${isOpen ? 'bg-brand-soft text-brand' : ''}`} onClick={onToggle}>
+            <FontAwesomeIcon icon={['fas', 'gear']} />
+          </button>
+          <button type="button" title="ลบคอลัมน์" aria-label="ลบคอลัมน์" className="btn-icon btn-icon-danger"
+            disabled={busy} onClick={onDelete}>
+            <FontAwesomeIcon icon={['fas', deleting ? 'circle-notch' : 'trash-can']} spin={deleting} />
           </button>
         </div>
-      ))}
-    </div>
+      </div>
+
+      <Collapse open={isOpen}>
+        <div className="border-t border-slate-100 bg-slate-50/60 p-4 sm:p-5 space-y-5">
+          <GroupEditor group={g} onSave={onSaved} />
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 className="font-display font-bold text-lg text-slate-800 flex items-center gap-2">
+                <FontAwesomeIcon icon={['fas', 'list-ul']} className="text-brand" />
+                รายการในคอลัมน์นี้
+                <span className="text-base font-normal text-slate-500">({count})</span>
+              </h3>
+              <button type="button" onClick={onAddItem} className="btn-primary">
+                <FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มรายการ
+              </button>
+            </div>
+            <ItemsList items={g.Items} color={color} onEdit={onEditItem} onDelete={onDeleteItem} onAdd={onAddItem} />
+          </div>
+        </div>
+      </Collapse>
+    </article>
   )
 }
 
 // ────────── Main page ──────────
 export default function AdminHomePage() {
   const [groups, setGroups]   = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true)       // first load only
+  const [loadError, setLoadError] = useState(null)   // first load failed — shows retry card
   const [openGroupId, setOpenGroupId] = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [formGroupId, setFormGroupId] = useState(null)
+  const [formKey, setFormKey]   = useState(0)        // remounts ItemForm with fresh state per open
+  const [formGroup, setFormGroup] = useState(null)
   const [formInitial, setFormInitial] = useState(null)
+  const [showAddGroup, setShowAddGroup] = useState(false)
+  const [busyGroupId, setBusyGroupId]   = useState(null) // group being moved/deleted
+  const [groupToDelete, setGroupToDelete] = useState(null)
+  const [itemToDelete, setItemToDelete]   = useState(null)
+  const [deletingItem, setDeletingItem]   = useState(false)
   const { toast } = useToast()
 
-  const reload = async () => {
-    setLoading(true)
+  // background=true keeps the page (and scroll position) and just swaps the data in
+  const reload = async ({ background = false } = {}) => {
+    if (!background) { setLoading(true); setLoadError(null) }
     try {
       const r = await api.get('/api/admin/home/all')
       setGroups(r.data?.groups || [])
+      setLoadError(null)
     } catch (e) {
-      toast({ message: e.response?.data?.error || 'โหลดไม่สำเร็จ', type: 'error' })
-    } finally { setLoading(false) }
+      const msg = apiError(e, 'โหลดไม่สำเร็จ')
+      if (background) toast({ message: msg, type: 'error' })
+      else setLoadError(msg)
+    } finally {
+      if (!background) setLoading(false)
+    }
+  }
+  const refresh = () => reload({ background: true })
+
+  useEffect(() => { reload() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openItemForm = (g, item) => {
+    setFormGroup(g)
+    setFormInitial(item)
+    setFormKey(k => k + 1)
+    setShowForm(true)
   }
 
-  useEffect(() => { reload() }, [])
-
-  const onAdd  = (gId)         => { setFormGroupId(gId); setFormInitial(null); setShowForm(true) }
-  const onEdit = (gId, item)   => { setFormGroupId(gId); setFormInitial(item); setShowForm(true) }
-  const onDelete = async (it) => {
-    if (!window.confirm(`ลบรายการ "${it.Title}" ?`)) return
+  const confirmDeleteItem = async () => {
+    const it = itemToDelete
+    if (!it) return
+    setDeletingItem(true)
     try {
       await api.delete(`/api/admin/home/items/${it.Id}`)
-      toast({ message: 'ลบสำเร็จ', type: 'success' })
-      reload()
+      toast({ message: `ลบรายการ “${it.Title}” สำเร็จ`, type: 'success' })
+      setItemToDelete(null)
+      refresh()
     } catch (e) {
-      toast({ message: e.response?.data?.error || 'ลบไม่สำเร็จ', type: 'error' })
+      toast({ message: apiError(e, 'ลบไม่สำเร็จ'), type: 'error' })
+    } finally { setDeletingItem(false) }
+  }
+
+  const onGroupCreated = (data) => {
+    setShowAddGroup(false)
+    if (data?.id) setOpenGroupId(data.id)
+    refresh()
+  }
+
+  const confirmDeleteGroup = async () => {
+    const g = groupToDelete
+    if (!g) return
+    const n = g.Items?.length || 0
+    setBusyGroupId(g.Id)
+    try {
+      const r = await api.delete(`/api/admin/home/groups/${g.Id}`)
+      toast({ message: `ลบคอลัมน์สำเร็จ (ลบ ${r.data?.deletedItems ?? n} รายการ)`, type: 'success' })
+      if (openGroupId === g.Id) setOpenGroupId(null)
+      setGroupToDelete(null)
+      refresh()
+    } catch (e) {
+      toast({ message: apiError(e, 'ลบไม่สำเร็จ'), type: 'error' })
+    } finally { setBusyGroupId(null) }
+  }
+
+  // Swap with the neighbour and save the whole order (1..n) in one request.
+  const onMoveGroup = async (idx, dir) => {
+    const j = idx + dir
+    if (j < 0 || j >= groups.length || busyGroupId) return
+    const next = [...groups]
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    const order = next.map((g, i) => ({ id: g.Id, sortOrder: i + 1 }))
+    setGroups(next.map((g, i) => ({ ...g, SortOrder: i + 1 }))) // optimistic
+    setBusyGroupId(groups[idx].Id)
+    try {
+      await api.put('/api/admin/home/groups/order', { order })
+    } catch (e) {
+      toast({ message: apiError(e, 'เปลี่ยนลำดับไม่สำเร็จ'), type: 'error' })
+    } finally {
+      setBusyGroupId(null)
+      refresh()
     }
   }
 
+  const header = (
+    <PageHeader
+      icon="table-columns"
+      title="คอลัมน์หน้าแรก"
+      subtitle="กำหนดคอลัมน์ (กลุ่ม) และรายการลิงก์ที่แสดงบนหน้าแรกของผู้ใช้ — ลำดับ สี ไอคอน และสิทธิ์ตามกลุ่ม AD"
+      actions={!loading && !loadError && (
+        <button type="button" onClick={() => setShowAddGroup(true)} className="btn-primary" disabled={showAddGroup}>
+          <FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มคอลัมน์
+        </button>
+      )}
+    />
+  )
+
   if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto animate-fade-in">
-        <div className="space-y-3">
-          {[0, 1, 2].map(i => <div key={i} className="h-24 skeleton rounded-2xl" />)}
-        </div>
-      </div>
-    )
+    return <div className="animate-fade-in">{header}<LoadingState rows={4} /></div>
   }
 
+  if (loadError) {
+    return <div className="animate-fade-in">{header}<ErrorState message={loadError} onRetry={() => reload()} /></div>
+  }
+
+  const deleteGroupCount = groupToDelete?.Items?.length || 0
+
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in">
-      {/* Page header */}
-      <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-display font-bold text-2xl text-brand-ink flex items-center gap-2">
-            <FontAwesomeIcon icon={['fas', 'table-columns']} className="text-brand" />
-            จัดการ Home Columns
-          </h1>
-          <p className="text-sm text-steel-500 mt-1">
-            ตั้งค่ากลุ่มและรายการ 3 คอลัมน์ที่จะแสดงบนหน้าแรกของผู้ใช้
-          </p>
+    <div className="animate-fade-in">
+      {header}
+
+      {showAddGroup && (
+        <div className="mb-5">
+          <GroupEditor group={null} onSave={onGroupCreated} onCancel={() => setShowAddGroup(false)} />
         </div>
-        <a href="/docs/installer/README.md" target="_blank" rel="noreferrer"
-          className="text-xs text-brand hover:underline inline-flex items-center gap-1">
-          <FontAwesomeIcon icon={['fas', 'circle-question']} />คู่มือการใช้งาน
-        </a>
-      </div>
+      )}
 
-      {/* Groups */}
-      {groups.map(g => {
-        const color  = toHex(g.Color)
-        const isOpen = openGroupId === g.Id
-        return (
-          <div key={g.Id} className="bg-white rounded-2xl shadow-sm border border-steel-200 mb-4 overflow-hidden">
-            {/* Group bar */}
-            <button
-              onClick={() => setOpenGroupId(isOpen ? null : g.Id)}
-              className="w-full px-5 py-4 flex items-center justify-between hover:bg-navy-50/40 transition"
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-xl shadow-sm"
-                     style={{ backgroundColor: color, color: '#fff' }}>
-                  <FaIcon icon={g.Icon || 'fa-solid fa-folder'} />
-                </div>
-                <div className="text-left min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-display font-bold text-lg text-brand-ink">{g.Title}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-steel-100 text-steel-500 font-mono">{g.GroupKey}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-brand/8 text-brand font-medium">
-                      {g.Items?.length || 0} รายการ
-                    </span>
-                    {!g.IsEnabled && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-700">ปิดอยู่</span>}
-                  </div>
-                  {g.Subtitle && <p className="text-xs text-steel-500 mt-0.5 truncate">{g.Subtitle}</p>}
-                </div>
-              </div>
-              <FontAwesomeIcon icon={['fas', isOpen ? 'chevron-up' : 'chevron-down']} className="text-steel-400" />
+      {groups.length === 0 && !showAddGroup && (
+        <EmptyState
+          icon="table-columns"
+          title="ยังไม่มีคอลัมน์"
+          message="เพิ่มคอลัมน์แรกเพื่อเริ่มจัดหน้าแรกของผู้ใช้"
+          action={
+            <button type="button" className="btn-primary" onClick={() => setShowAddGroup(true)}>
+              <FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มคอลัมน์
             </button>
-
-            {isOpen && (
-              <div className="px-5 pb-5 pt-2 bg-navy-50/30 space-y-4 border-t border-steel-200">
-                <GroupEditor group={g} onSave={reload} />
-
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-display font-semibold text-brand-ink flex items-center gap-2">
-                      <FontAwesomeIcon icon={['fas', 'list']} className="text-brand" />
-                      รายการในกลุ่มนี้
-                    </h4>
-                    <button onClick={() => onAdd(g.Id)} className="btn-primary text-sm">
-                      <FontAwesomeIcon icon={['fas', 'plus']} />เพิ่มรายการ
-                    </button>
-                  </div>
-                  <ItemsList items={g.Items} onEdit={(it) => onEdit(g.Id, it)} onDelete={onDelete} />
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })}
-
-      {showForm && (
-        <ItemForm
-          groupId={formGroupId}
-          initial={formInitial}
-          onClose={() => setShowForm(false)}
-          onSaved={reload}
+          }
         />
       )}
+
+      <div className="space-y-4">
+        {groups.map((g, idx) => (
+          <GroupCard
+            key={g.Id}
+            group={g}
+            index={idx}
+            total={groups.length}
+            isOpen={openGroupId === g.Id}
+            busy={busyGroupId !== null}
+            deleting={busyGroupId === g.Id && groupToDelete?.Id === g.Id}
+            onToggle={() => setOpenGroupId(openGroupId === g.Id ? null : g.Id)}
+            onMove={(dir) => onMoveGroup(idx, dir)}
+            onDelete={() => setGroupToDelete(g)}
+            onSaved={refresh}
+            onAddItem={() => openItemForm(g, null)}
+            onEditItem={(it) => openItemForm(g, it)}
+            onDeleteItem={(it) => setItemToDelete(it)}
+          />
+        ))}
+      </div>
+
+      {formKey > 0 && (
+        <ItemForm
+          key={formKey}
+          open={showForm}
+          groupId={formGroup?.Id}
+          groupTitle={formGroup?.Title}
+          groupColor={formGroup?.Color}
+          initial={formInitial}
+          onClose={() => setShowForm(false)}
+          onSaved={refresh}
+        />
+      )}
+
+      <ConfirmDialog
+        open={!!groupToDelete}
+        onClose={() => { if (!busyGroupId) setGroupToDelete(null) }}
+        onConfirm={confirmDeleteGroup}
+        loading={!!groupToDelete && busyGroupId === groupToDelete.Id}
+        isDangerous
+        title="ลบคอลัมน์นี้?"
+        confirmText="ลบคอลัมน์"
+        message={
+          <>
+            <p>ต้องการลบคอลัมน์ <strong className="text-slate-800">“{groupToDelete?.Title}”</strong> ใช่หรือไม่</p>
+            <p className="mt-2">
+              {deleteGroupCount > 0
+                ? <>รายการในคอลัมน์นี้ <strong className="text-red-600">{deleteGroupCount} รายการ</strong> จะถูกลบไปด้วย</>
+                : 'คอลัมน์นี้ไม่มีรายการ'}
+            </p>
+            <p className="mt-2 text-red-600">การลบไม่สามารถกู้คืนได้</p>
+          </>
+        }
+      />
+
+      <ConfirmDialog
+        open={!!itemToDelete}
+        onClose={() => { if (!deletingItem) setItemToDelete(null) }}
+        onConfirm={confirmDeleteItem}
+        loading={deletingItem}
+        isDangerous
+        title="ลบรายการนี้?"
+        confirmText="ลบรายการ"
+        message={<>ต้องการลบรายการ <strong className="text-slate-800">“{itemToDelete?.Title}”</strong> ใช่หรือไม่ — การลบไม่สามารถกู้คืนได้</>}
+      />
     </div>
   )
 }

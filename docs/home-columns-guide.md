@@ -1,6 +1,7 @@
-# คู่มือการใช้งาน Home Columns (3-คอลัมน์หน้าแรก)
+# คู่มือการใช้งาน Home Columns (คอลัมน์หน้าแรก)
 
-หน้านี้คือเครื่องมือที่ admin ใช้ตั้งค่ากลุ่ม 3 คอลัมน์ที่จะแสดงด้านบนของหน้าแรกฝั่ง user
+หน้านี้คือเครื่องมือที่ admin ใช้ตั้งค่าคอลัมน์ (กลุ่ม) ที่จะแสดงด้านบนของหน้าแรกฝั่ง user
+ค่าเริ่มต้นมี 3 คอลัมน์ — เพิ่ม / ลบ / สลับลำดับคอลัมน์ได้ (ดูข้อ 2.1)
 รองรับการเปิดโปรแกรมในเครื่อง (Power BI / Excel / Word / ไฟล์อื่นๆ) ผ่าน custom protocol `kmportal://`
 และเชื่อมไปยังโฟลเดอร์ใน Portal, Knowledge Items, หรือ URL ภายนอก
 
@@ -11,10 +12,11 @@
 ## 1. โครงสร้างข้อมูล (มอง 1 ครั้งเข้าใจทั้งระบบ)
 
 ```
-HomeGroups (3 รายการคงที่)
+HomeGroups (ค่าเริ่มต้น 3 รายการ — เพิ่ม/ลบ/สลับลำดับได้)
 ├── NORMAL_WORK         ← คอลัมน์ที่ 1
 ├── ABNORMAL_WORK       ← คอลัมน์ที่ 2
-└── ADDITIONAL_INFO     ← คอลัมน์ที่ 3
+├── ADDITIONAL_INFO     ← คอลัมน์ที่ 3
+└── ...                 ← คอลัมน์ที่ admin เพิ่มเอง (GroupKey สร้างอัตโนมัติ)
         │
         └── HomeItems (รายการในกลุ่ม - เพิ่ม/ลบได้)
                 ├── linkType = program        → เปิดโปรแกรมในเครื่อง
@@ -30,7 +32,7 @@ HomeGroups (3 รายการคงที่)
 
 ## 2. การตั้งค่ากลุ่ม (Group)
 
-ในหน้า **Home Columns** จะเห็น 3 แถบคอลัมน์ — **NORMAL WORK / ABNORMAL WORK / ADDITIONAL INFO**
+ในหน้า **Home Columns** จะเห็นแถบคอลัมน์เรียงตามลำดับที่แสดงบนหน้าแรก (ค่าเริ่มต้น **NORMAL WORK / ABNORMAL WORK / ADDITIONAL INFO**)
 
 คลิกที่แถบใดๆ เพื่อกางออก จะเจอฟอร์ม "ตั้งค่า Group":
 
@@ -46,6 +48,26 @@ HomeGroups (3 รายการคงที่)
 > สีอ่อนเช่น `#FFCC99` → ตัวอักษรเข้ม / สีเข้มเช่น `#1E40AF` → ตัวอักษรขาว
 
 กดปุ่ม **"บันทึกการตั้งค่ากลุ่ม"** เพื่อบันทึก
+
+### 2.1 เพิ่ม / ลบ / สลับลำดับคอลัมน์
+
+| ทำอะไร | วิธี |
+|---|---|
+| **เพิ่มคอลัมน์** | กดปุ่ม **"+ เพิ่มคอลัมน์"** มุมขวาบน → กรอกฟอร์มเดียวกับ "ตั้งค่า Group" (ชื่อหัวข้อ\* / คำอธิบายย่อย / ไอคอน / สี / สถานะ) → **"เพิ่มคอลัมน์"** คอลัมน์ใหม่จะต่อท้ายสุด และระบบสร้าง `GroupKey` ให้อัตโนมัติจากชื่อ (ตัวอักษรอังกฤษ/ตัวเลข เช่น `SAFETY_DOCS`; ชื่อภาษาไทยล้วนจะได้ `GROUP`, `GROUP_2`, ...) |
+| **ลบคอลัมน์** | กดไอคอน 🗑 ท้ายแถบคอลัมน์ → ยืนยัน ระบบจะแจ้งจำนวนรายการที่จะถูกลบไปด้วย — **รายการทั้งหมดในคอลัมน์และการจับคู่ AD Group จะถูกลบถาวร** กู้คืนไม่ได้ |
+| **สลับลำดับ** | กดลูกศร ↑ / ↓ ท้ายแถบคอลัมน์ บันทึกทันที (ลำดับบนหน้าแรก = ลำดับในหน้านี้) |
+
+> การแก้ไข "ตั้งค่า Group" ไม่เปลี่ยนลำดับคอลัมน์ — ลำดับเปลี่ยนได้จากปุ่ม ↑ / ↓ เท่านั้น
+
+**Layout บนหน้าแรกปรับตามจำนวนคอลัมน์ที่เปิดอยู่:**
+
+| จำนวนคอลัมน์ | มือถือ | แท็บเล็ต (md) | จอกว้าง |
+|---|---|---|---|
+| 1 | 1 | 1 | 1 |
+| 2 | 1 | 2 | 2 |
+| 3 | 1 | 2 | 3 (lg) |
+| 4 | 1 | 2 | 4 (xl) |
+| 5 ขึ้นไป | 1 | 2 | 3 ต่อแถว (lg) แล้วขึ้นแถวใหม่ |
 
 ---
 
@@ -76,7 +98,17 @@ HomeGroups (3 รายการคงที่)
 - **ชนิดโปรแกรม** — Power BI / Excel / Word / ไฟล์อื่นๆ
 - **การจับคู่ AD Group → File Path** (ตารางหลายแถว):
   - **AD Group** — ชื่อกลุ่มใน Active Directory เช่น `dt-staff`
-  - **File Path** — UNC path หรือ drive path เช่น `\\fileserver\reports\monthly.pbix`
+  - **File Path** — UNC path หรือ drive path รองรับ 3 รูปแบบ:
+
+| รูปแบบ | ตัวอย่าง | พฤติกรรม |
+|---|---|---|
+| ไฟล์ตรงตัว | `\\fileserver\reports\monthly.pbix` | เปิดไฟล์นั้น ถ้าไฟล์ถูกเปลี่ยนชื่อไปแล้ว จะหาไฟล์ที่ชื่อใกล้เคียงและนามสกุลเดียวกันในโฟลเดอร์เดียวกัน เลือกตัวที่แก้ไขล่าสุด |
+| โฟลเดอร์ | `\\fileserver\reports\daily\` | เลือกไฟล์ที่แก้ไขล่าสุดที่นามสกุลตรงกับชนิดโปรแกรม |
+| wildcard | `\\fileserver\reports\daily\L1-2-Data*.xlsm` | เลือกไฟล์ที่แก้ไขล่าสุดที่ชื่อตรงแพทเทิร์น |
+
+> ⚙️ **resolve ตอนคลิก**: frontend เรียก `GET /api/home/items/:id/resolve` ก่อนยิง `kmportal://`
+> ไม่มี popup ให้เลือก ระบบตัดสินใจให้เลย ถ้า server อ่าน share ไม่ได้ จะ fallback ไปใช้ path ดิบที่บันทึกไว้
+> `matchMode` ใน response บอกว่าเลือกมาด้วยวิธีไหน: `exact` / `renamed` / `folder` / `glob` / `raw`
 
 > ⚙️ **กลไกการเลือกไฟล์**:
 > เมื่อ user คลิก ระบบจะวนดูตาราง mapping จากบนลงล่าง และใช้ **แถวแรกที่ AD Group ของ user ตรง**
@@ -107,10 +139,28 @@ HomeGroups (3 รายการคงที่)
 
 ##### 3.4 — URL ภายนอก
 - **URL\*** — เปิดในแท็บใหม่ ไม่ผ่านระบบสิทธิ์
+- 🔒 **รับเฉพาะ `http://` หรือ `https://`** (เช่น `https://example.com`, `http://intranet/page`) — URL แบบอื่น เช่น `javascript:`, `data:`, `file:` จะถูกปฏิเสธตอนบันทึก (400)
+  และหน้าแรกจะไม่แสดงรายการที่ URL ไม่ขึ้นต้นด้วย http/https (กันข้อมูลเก่าที่บันทึกไว้ก่อนมีการตรวจ)
+
+##### 3.5 — ข้อมูลที่ต้องกรอก (บันทึกไม่ได้ถ้าไม่ครบ)
+
+| ประเภท | ต้องมี |
+|---|---|
+| เปิดโปรแกรม / เปิดโปรแกรมแบบกลุ่ม | การจับคู่ AD Group → Path **อย่างน้อย 1 แถว** และทุกแถวต้องกรอกครบทั้ง 2 ช่อง (AD Group ≤ 200 ตัวอักษร, Path ≤ 1000 ตัวอักษร) |
+| โฟลเดอร์ | เลือกโฟลเดอร์ |
+| Knowledge | เลือก Knowledge Item |
+| URL ภายนอก | URL ที่ขึ้นต้นด้วย `http://` หรือ `https://` |
+
+ถ้าไม่ครบ ฟอร์มจะแสดงข้อความสีแดงใต้ช่องที่ผิด (ตรวจทั้งฝั่งหน้าเว็บและฝั่ง server)
+ค่าที่ไม่เกี่ยวกับประเภทที่เลือก (เช่น Folder ID ของรายการประเภท URL) จะถูกล้างทิ้งตอนบันทึก
 
 #### Section 4: ตัวเลือกอื่น
 - **ลำดับการแสดง** (sortOrder) — เลขน้อยมาก่อน (0, 1, 2, ...)
 - **สถานะ** (toggle) — เปิด/ปิดเฉพาะรายการนี้
+- **แสดงตั้งแต่แรก** (toggle, `IsPinned`) — ON = แสดงบนหน้าแรกทันที / OFF = ซ่อนไว้จนกว่า user กด **Show More**
+  - ปุ่ม Show More/Hide อยู่ใต้คอลัมน์ทั้งหมด กดครั้งเดียวกาง/ซ่อนทุกคอลัมน์พร้อมกัน สถานะถูกจำใน `sessionStorage` (`home.showAll`) จนปิดแท็บ
+  - คอลัมน์ที่ไม่มีรายการ pinned เลย จะแสดงทุกรายการเสมอ
+  - ต้องรัน `Back-end/SQL/migration_add_home_ispinned.sql` ก่อนใช้งาน
 
 กดปุ่ม **"เพิ่มรายการ"** หรือ **"บันทึกการแก้ไข"** ที่มุมขวาล่าง
 
@@ -237,6 +287,7 @@ fa-solid   fa-folder
 | รายการ folder หายไป                      | User ไม่มีสิทธิ์โฟลเดอร์นั้น              | ตั้งสิทธิ์ที่หน้า "Permissions" |
 | ไอคอนแสดงเป็นรูปวงกลม `?`                 | Class Font Awesome พิมพ์ผิด              | คัดลอกจากปุ่ม "ตัวอย่าง" หรือเช็คที่เว็บ FA |
 | สีหัวคอลัมน์ดูแปลก                         | HEX ใส่ผิดรูปแบบ                          | ใช้ `#RRGGBB` 6 หลัก เช่น `#FFCC99` |
+| บันทึกรายการ URL ไม่ได้ / รายการ URL ไม่แสดงบนหน้าแรก | URL ไม่ขึ้นต้นด้วย `http://` หรือ `https://` | แก้ URL ให้ขึ้นต้นด้วย `https://` |
 
 ---
 
@@ -244,19 +295,26 @@ fa-solid   fa-folder
 
 ```
 PUBLIC (auth required)
-GET    /api/home/data                 → ดึง 3 columns + items ที่ user ปัจจุบันมีสิทธิ์
+GET    /api/home/data                 → ดึงทุก column (ที่เปิดอยู่) + items ที่ user ปัจจุบันมีสิทธิ์
+GET    /api/home/items/:id/resolve    → (program) path ของไฟล์ที่มีอยู่จริงตอนนี้ + matchMode
 GET    /api/home/items/:id/files      → (program_group) รายการไฟล์ในโฟลเดอร์ที่ AD Group ของ user แมตช์
 
 ADMIN (admin-dt only)
 GET    /api/admin/home/all            → tree เต็ม (ทุก group + items + mappings)
-PUT    /api/admin/home/groups/:id     → แก้ไข group (title/icon/color/enabled)
-POST   /api/admin/home/items          → เพิ่มรายการใหม่
-PUT    /api/admin/home/items/:id      → แก้ไขรายการ (รวม mappings)
+POST   /api/admin/home/groups         → เพิ่ม group { title*, subtitle?, icon?, color?, isEnabled? }
+                                        → 201 { ok, id, groupKey, sortOrder }  (ต่อท้ายสุด, GroupKey สร้างให้)
+PUT    /api/admin/home/groups/order   → { order: [{ id, sortOrder }] } ใน transaction เดียว → { ok, updated }
+PUT    /api/admin/home/groups/:id     → แก้ไข group (title/icon/color/enabled; ไม่ส่ง sortOrder = คงลำดับเดิม)
+DELETE /api/admin/home/groups/:id     → ลบ group + items + mappings ใน transaction เดียว → { ok, deletedItems }
+POST   /api/admin/home/items          → เพิ่มรายการใหม่ (item + mappings ใน transaction เดียว)
+PUT    /api/admin/home/items/:id      → แก้ไขรายการ (รวม mappings, transaction เดียว)
 DELETE /api/admin/home/items/:id      → ลบรายการ
 PUT    /api/admin/home/items/:id/mappings  → replace ทุก mapping ของ item
 ```
 
+Validation error ทุก endpoint ตอบ `400 { error: "<ข้อความแรก (ภาษาไทย)>", code: "VALIDATION", errors: [{ path, msg, ... }] }`
+
 ตาราง:
 - `dbo.HomeGroups` (Id, GroupKey, Title, Subtitle, Icon, **Color** NVARCHAR(20), SortOrder, IsEnabled, ...)
-- `dbo.HomeItems`  (Id, GroupId, Title, Subtitle, Icon, LinkType, ProgramType, FolderId, KnowledgeId, ExternalUrl, SortOrder, IsEnabled, ...)
+- `dbo.HomeItems`  (Id, GroupId, Title, Subtitle, Icon, LinkType, ProgramType, FolderId, KnowledgeId, ExternalUrl, SortOrder, IsEnabled, IsPinned, ...)
 - `dbo.HomeItemFileMappings` (Id, ItemId, AdGroup, FilePath, SortOrder, ...)

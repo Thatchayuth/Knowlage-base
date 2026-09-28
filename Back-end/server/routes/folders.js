@@ -45,10 +45,18 @@ const folderCtrl = require('../controllers/folder.controller');
 const syncCtrl   = require('../controllers/sync.controller');
 
 // ── Validation helpers ──
+// Response: { success:false, error:'<first message>', message:'<same>', errors:[...] }
+// `error`/`message` carry a readable text for frontends that only read one field.
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
+    const list  = errors.array();
+    const first = list[0] || {};
+    const field = first.path || first.param;
+    const msg   = first.msg && first.msg !== 'Invalid value'
+      ? first.msg
+      : `ข้อมูลไม่ถูกต้อง${field ? `: ${field}` : ''}`;
+    return res.status(400).json({ success: false, error: msg, message: msg, errors: list });
   }
   return next();
 };
@@ -62,7 +70,7 @@ router.get(
   '/files/:fileId',
   authenticateAD,
   mapPortalUser,
-  [param('fileId').isInt({ min: 1 })],
+  [param('fileId').isInt({ min: 1 }).withMessage('fileId ไม่ถูกต้อง')],
   validate,
   folderCtrl.serveFile
 );
@@ -80,7 +88,10 @@ router.get(
   '/search',
   authenticateAD,
   mapPortalUser,
-  [require('express-validator').query('q').notEmpty().isString().isLength({ max: 200 })],
+  [require('express-validator').query('q')
+    .notEmpty().withMessage('กรุณาระบุคำค้นหา')
+    .isString().withMessage('คำค้นหาไม่ถูกต้อง')
+    .isLength({ max: 200 }).withMessage('คำค้นหายาวเกิน 200 ตัวอักษร')],
   validate,
   folderCtrl.searchPortalFiles
 );
@@ -90,7 +101,7 @@ router.get(
   '/folders/:id/children',
   authenticateAD,
   mapPortalUser,
-  [param('id').isInt({ min: 1 })],
+  [param('id').isInt({ min: 1 }).withMessage('id ไม่ถูกต้อง')],
   validate,
   folderCtrl.getChildren
 );
@@ -100,7 +111,7 @@ router.get(
   '/folders/:id/files',
   authenticateAD,
   mapPortalUser,
-  [param('id').isInt({ min: 1 })],
+  [param('id').isInt({ min: 1 }).withMessage('id ไม่ถูกต้อง')],
   validate,
   checkFolderAccess(),
   folderCtrl.getFiles
@@ -125,12 +136,13 @@ router.post(
   '/admin/folders',
   adminGuard,
   [
-    body('FolderName').notEmpty().isString(),
-    body('FullPath').notEmpty().isString(),
-    body('ParentId').optional({ nullable: true }).isInt(),
-    body('SortOrder').optional().isInt(),
-    body('Icon').optional().isString(),
-    body('Description').optional().isString(),
+    body('FolderName').notEmpty().withMessage('กรุณาระบุชื่อโฟลเดอร์').isString().withMessage('ชื่อโฟลเดอร์ไม่ถูกต้อง'),
+    body('FullPath').notEmpty().withMessage('กรุณาระบุ Full Path').isString().withMessage('Full Path ไม่ถูกต้อง'),
+    body('ParentId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('ParentId ไม่ถูกต้อง'),
+    body('SortOrder').optional().isInt().withMessage('SortOrder ต้องเป็นตัวเลขจำนวนเต็ม'),
+    body('Icon').optional().isString().withMessage('Icon ไม่ถูกต้อง'),
+    body('Description').optional().isString().withMessage('คำอธิบายไม่ถูกต้อง'),
+    body('IsHidden').optional({ nullable: true }).isBoolean().withMessage('IsHidden ต้องเป็น true/false'),
   ],
   validate,
   folderCtrl.adminCreate
@@ -141,12 +153,15 @@ router.put(
   '/admin/folders/:id',
   adminGuard,
   [
-    param('id').isInt({ min: 1 }),
-    body('FolderName').optional({ nullable: true }).isString(),
-    body('IsActive').optional({ nullable: true }).isBoolean(),
-    body('SortOrder').optional({ nullable: true }).isInt(),
-    body('Icon').optional({ nullable: true }).isString(),
-    body('Description').optional({ nullable: true }).isString(),
+    param('id').isInt({ min: 1 }).withMessage('id ไม่ถูกต้อง'),
+    body('FolderName').optional({ nullable: true }).isString().withMessage('ชื่อโฟลเดอร์ไม่ถูกต้อง'),
+    body('IsActive').optional({ nullable: true }).isBoolean().withMessage('IsActive ต้องเป็น true/false'),
+    body('IsHidden').optional({ nullable: true }).isBoolean().withMessage('IsHidden ต้องเป็น true/false'),
+    body('ParentId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('ParentId ไม่ถูกต้อง'),
+    body('SortOrder').optional({ nullable: true }).isInt().withMessage('SortOrder ต้องเป็นตัวเลขจำนวนเต็ม'),
+    body('Icon').optional({ nullable: true }).isString().withMessage('Icon ไม่ถูกต้อง'),
+    body('Description').optional({ nullable: true }).isString().withMessage('คำอธิบายไม่ถูกต้อง'),
+    // FullPath is owned by sync and deliberately NOT editable here (ignored by the controller)
   ],
   validate,
   folderCtrl.adminUpdate
@@ -156,7 +171,7 @@ router.put(
 router.delete(
   '/admin/folders/:id',
   adminGuard,
-  [param('id').isInt({ min: 1 })],
+  [param('id').isInt({ min: 1 }).withMessage('id ไม่ถูกต้อง')],
   validate,
   folderCtrl.adminDelete
 );
@@ -165,7 +180,11 @@ router.delete(
 router.post(
   '/admin/sync',
   adminGuard,
-  [body('rootPath').optional().isString()],
+  [
+    // Must be portal_drive_root or a folder under it — enforced in sync.controller.triggerSync
+    body('rootPath').optional({ nullable: true }).isString().withMessage('rootPath ต้องเป็นข้อความ')
+      .isLength({ max: 1000 }).withMessage('rootPath ยาวเกิน 1000 ตัวอักษร'),
+  ],
   validate,
   syncCtrl.triggerSync
 );
@@ -184,7 +203,9 @@ router.get('/admin/sync-users', adminGuard, syncCtrl.listSyncUsers);
 router.post(
   '/admin/sync-users',
   adminGuard,
-  [body('username').trim().notEmpty().isLength({ max: 100 })],
+  [body('username').isString().withMessage('username ไม่ถูกต้อง').bail()
+    .trim().notEmpty().withMessage('กรุณาระบุ username')
+    .isLength({ max: 100 }).withMessage('username ยาวเกิน 100 ตัวอักษร')],
   validate,
   syncCtrl.addSyncUser
 );
@@ -193,7 +214,7 @@ router.post(
 router.delete(
   '/admin/sync-users/:id',
   adminGuard,
-  [param('id').isInt({ min: 1 })],
+  [param('id').isInt({ min: 1 }).withMessage('id ไม่ถูกต้อง')],
   validate,
   syncCtrl.removeSyncUser
 );

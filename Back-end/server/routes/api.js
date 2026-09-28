@@ -20,7 +20,7 @@ router.get('/knowledge/:id', getKnowledgeById);
 // GET /api/featured - top highlighted/popular items
 router.get('/featured', getFeaturedKnowledge);
 
-// GET /api/settings - public site settings
+// GET /api/settings - public site settings (whitelisted keys only; full set: GET /api/admin/settings)
 router.get('/settings', getSettings);
 
 // GET /api/settings/terms-image - stream terms-of-use image (authenticated)

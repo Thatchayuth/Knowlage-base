@@ -1,15 +1,20 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import Modal from './Modal'
 
+/**
+ * Confirmation dialog. `isDangerous` switches to a red delete style.
+ * Accepts both `open`/`isOpen` and `loading`/`isLoading` (older callers use either).
+ */
 export default function ConfirmDialog(props) {
   const {
     open,
     isOpen,
     onClose,
     onConfirm,
-    title = 'Confirm',
-    message = 'Are you sure?',
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
+    title = 'ยืนยันการทำรายการ',
+    message = 'ต้องการดำเนินการต่อหรือไม่?',
+    confirmText,
+    cancelText = 'ยกเลิก',
     isDangerous = false,
     loading,
     isLoading,
@@ -17,37 +22,42 @@ export default function ConfirmDialog(props) {
 
   const resolvedOpen = typeof open === 'boolean' ? open : isOpen
   const resolvedLoading = typeof loading === 'boolean' ? loading : isLoading
+  const label = confirmText || (isDangerous ? 'ลบ' : 'ยืนยัน')
+
+  const icon = (
+    <span className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-lg ${
+      isDangerous ? 'bg-red-50 text-red-600' : 'bg-brand-soft text-brand'
+    }`}>
+      <FontAwesomeIcon icon={['fas', isDangerous ? 'triangle-exclamation' : 'circle-question']} />
+    </span>
+  )
 
   return (
     <Modal
-      isOpen={resolvedOpen}
+      isOpen={!!resolvedOpen}
       onClose={onClose}
       title={title}
+      icon={icon}
+      size="sm"
+      busy={!!resolvedLoading}
       footer={
         <>
-          <button
-            onClick={onClose}
-            disabled={resolvedLoading}
-            className="px-4 py-2 rounded-lg border border-gray-200 text-slate-700 hover:text-slate-900 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <button type="button" onClick={onClose} disabled={resolvedLoading} className="btn-secondary">
             {cancelText}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={resolvedLoading}
-            className={`px-4 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
-              isDangerous
-                ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
-                : 'bg-accent-500/20 text-accent-200 border border-accent-500/40 hover:bg-accent-500/35'
-            }`}
+            className={isDangerous ? 'btn-danger' : 'btn-primary'}
           >
-            {resolvedLoading ? 'Working…' : confirmText}
+            {resolvedLoading && <FontAwesomeIcon icon={['fas', 'circle-notch']} spin />}
+            {resolvedLoading ? 'กำลังดำเนินการ…' : label}
           </button>
         </>
       }
     >
-      <p className="text-sm leading-relaxed text-slate-300">{message}</p>
+      <div className="text-base leading-relaxed text-slate-600">{message}</div>
     </Modal>
   )
 }
-

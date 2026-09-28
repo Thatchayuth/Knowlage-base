@@ -15,6 +15,9 @@
  *   folderName(p)         → extract basename
  *   isUncPath(p)          → detect UNC
  *   isSafePath(p, base)   → prevent directory traversal
+ *   pathKey(p)            → case-insensitive comparison key (normalized, no trailing slash, lowercase)
+ *   isSameOrUnder(p, base)→ p is base itself or inside it (case-insensitive, segment-aware)
+ *   hasTraversal(p)       → true if any path segment is '..'
  *   extName(filename)     → lowercase extension e.g. '.pdf'
  *   mimeFromExt(ext)      → basic MIME type mapping
  */
@@ -102,12 +105,46 @@ function isUncPath(p) {
 function isSafePath(p, basePath) {
   // UNC paths cannot be resolved with path.resolve — do string check instead
   if (isUncPath(p) || isUncPath(basePath)) {
-    return stripTrailing(p).toLowerCase()
-      .startsWith(stripTrailing(basePath).toLowerCase());
+    return !hasTraversal(p) && isSameOrUnder(p, basePath);
   }
   const resolved = path.resolve(p);
   const base     = path.resolve(basePath);
-  return resolved.startsWith(base + path.sep) || resolved === base;
+  // Case-insensitive (Windows/NTFS semantics), segment-aware
+  return isSameOrUnder(resolved, base);
+}
+
+/**
+ * Comparison key for a path: backslash-normalized, trailing slash removed, lowercased.
+ * Windows/NTFS and the DB collation both treat paths case-insensitively, so every
+ * "is this the same folder?" check must compare keys, never raw strings.
+ * @param {string} p
+ * @returns {string}
+ */
+function pathKey(p) {
+  return stripTrailing(p).toLowerCase();
+}
+
+/**
+ * True when p is basePath itself or sits inside it (case-insensitive).
+ * Segment-aware: 'D:\\Shared2' is NOT under 'D:\\Shared'.
+ * @param {string} p
+ * @param {string} basePath
+ * @returns {boolean}
+ */
+function isSameOrUnder(p, basePath) {
+  const k = pathKey(p);
+  const b = pathKey(basePath);
+  if (!b) return false;
+  return k === b || k.startsWith(b + '\\');
+}
+
+/**
+ * True when any segment of p is '..' (directory traversal attempt).
+ * @param {string} p
+ * @returns {boolean}
+ */
+function hasTraversal(p) {
+  return normalize(p).split('\\').some(seg => seg.trim() === '..');
 }
 
 /**
@@ -128,4 +165,4 @@ function mimeFromExt(ext) {
   return MIME_MAP[ext] || 'application/octet-stream';
 }
 
-module.exports = { normalize, stripTrailing, folderName, isUncPath, isSafePath, extName, mimeFromExt };
+module.exports = { normalize, stripTrailing, folderName, isUncPath, isSafePath, pathKey, isSameOrUnder, hasTraversal, extName, mimeFromExt };

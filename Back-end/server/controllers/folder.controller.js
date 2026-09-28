@@ -22,6 +22,7 @@
  */
 
 const folderService = require('../services/folder.service');
+const folderRepo    = require('../repositories/folder.repository');
 const fileRepo      = require('../repositories/fileMetadata.repository');
 const permRepo      = require('../repositories/permission.repository');
 const cache         = require('../services/cache.service');
@@ -215,6 +216,7 @@ async function adminCreate(req, res) {
       sortOrder:   b.SortOrder    ?? b.sortOrder    ?? 0,
       icon:        b.Icon         ?? b.icon         ?? 'folder',
       description: b.Description  ?? b.description  ?? null,
+      isHidden:    toBool(b.IsHidden ?? b.isHidden),
     });
     return res.status(201).json({ success: true, data: { id } });
   } catch (err) {
@@ -222,14 +224,38 @@ async function adminCreate(req, res) {
   }
 }
 
+/** true / 1 / 'true' / '1' → true; anything else → false */
+function toBool(v) {
+  return v === true || v === 1 || v === 'true' || v === '1';
+}
+
+/** 400 with both `message` and `error` so either frontend convention shows the text. */
+function badRequest(res, msg) {
+  return res.status(400).json({ success: false, message: msg, error: msg });
+}
+
 /**
  * PUT /api/portal/admin/folders/:id
  * Body: same shape as POST (partial update OK — only provided fields updated)
+ *
+ * FullPath is deliberately IGNORED: it is owned by drive sync (the MERGE key),
+ * so editing it here would detach the row from its folder on disk.
+ * ParentId may change (validated: must exist, must not be the folder itself or
+ * one of its descendants). Note: sync re-sets ParentId of non-manual folders
+ * from the disk layout on its next run.
+ *
+ * Response 200: { success:true, data:<saved folder row> }
  */
 async function adminUpdate(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
     const b  = req.body;
+
+    const existing = await folderRepo.getFolderById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'ไม่พบโฟลเดอร์', error: 'ไม่พบโฟลเดอร์' });
+    }
+
     // Normalize PascalCase (from frontend/validator) → camelCase (for service/repo).
     // Only include a field in the payload if it was present in the request body so
     // COALESCE in the repository can distinguish "not provided" from "set to null".
@@ -237,10 +263,34 @@ async function adminUpdate(req, res) {
     if ('FolderName'  in b || 'folderName'  in b) data.folderName  = (b.FolderName  ?? b.folderName  ?? '').trim() || undefined;
     if ('SortOrder'   in b || 'sortOrder'   in b) data.sortOrder   = b.SortOrder   ?? b.sortOrder;
     if ('Icon'        in b || 'icon'        in b) data.icon        = b.Icon        ?? b.icon;
-    if ('IsHidden'    in b || 'isHidden'    in b) data.isHidden    = b.IsHidden    ?? b.isHidden;
+    if ('IsHidden'    in b || 'isHidden'    in b) { const h = b.IsHidden ?? b.isHidden; data.isHidden = h == null ? h : toBool(h); }
     if ('Description' in b || 'description' in b) data.description = b.Description ?? b.description;
+
+    if ('ParentId' in b || 'parentId' in b) {
+      const raw = 'ParentId' in b ? b.ParentId : b.parentId;
+      const newParent = (raw === null || raw === undefined || raw === '') ? null : parseInt(raw, 10);
+      if (newParent !== null) {
+        if (!Number.isInteger(newParent) || newParent < 1) {
+          return badRequest(res, 'ParentId ไม่ถูกต้อง');
+        }
+        if (newParent === id) {
+          return badRequest(res, 'ไม่สามารถย้ายโฟลเดอร์ไปอยู่ใต้ตัวเองได้');
+        }
+        const parent = await folderRepo.getFolderById(newParent);
+        if (!parent) {
+          return badRequest(res, 'ไม่พบโฟลเดอร์แม่ที่เลือก');
+        }
+        if (await folderRepo.isSelfOrDescendant(id, newParent)) {
+          return badRequest(res, 'ไม่สามารถย้ายโฟลเดอร์ไปอยู่ใต้โฟลเดอร์ย่อยของตัวเองได้');
+        }
+      }
+      data.parentId = newParent;
+    }
+    // FullPath / fullPath in the body are intentionally ignored (see doc above).
+
     await folderService.updateFolder(id, data);
-    return res.json({ success: true });
+    const saved = await folderRepo.getFolderById(id);
+    return res.json({ success: true, data: saved });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

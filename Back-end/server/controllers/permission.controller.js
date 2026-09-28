@@ -18,6 +18,16 @@
 
 const permissionService = require('../services/permission.service');
 
+/** Username for audit entries — set by authenticateAD (req.user). */
+function actor(req) {
+  return req.user?.username || 'admin';
+}
+
+/** 400 with both `message` and `error` so either frontend convention shows the text. */
+function badRequest(res, msg) {
+  return res.status(400).json({ success: false, message: msg, error: msg });
+}
+
 /**
  * GET /api/portal/admin/permissions/:folderId
  * Returns all AD group permission rows for a folder.
@@ -42,10 +52,12 @@ async function getByFolder(req, res) {
  */
 async function setPermission(req, res) {
   try {
-    const { folderId, adGroup, canView, canUpload, canDelete } = req.body;
+    const { folderId, canView, canUpload, canDelete } = req.body;
+    const adGroup = typeof req.body.adGroup === 'string' ? req.body.adGroup.trim() : '';
+    if (!adGroup) return badRequest(res, 'กรุณาระบุชื่อ AD Group');
     await permissionService.setPermission(
       { folderId: parseInt(folderId, 10), adGroup, canView: !!canView, canUpload: !!canUpload, canDelete: !!canDelete },
-      req.adminUser?.username || 'admin'
+      actor(req)
     );
     return res.json({ success: true });
   } catch (err) {
@@ -60,9 +72,12 @@ async function setPermission(req, res) {
 async function removePermission(req, res) {
   try {
     const folderId = parseInt(req.params.folderId, 10);
-    const adGroup  = decodeURIComponent(req.params.adGroup);
+    // Express already URL-decodes route params — decoding again would corrupt
+    // names containing '%' and throw URIError on malformed sequences.
+    const adGroup  = String(req.params.adGroup || '').trim();
+    if (!adGroup) return badRequest(res, 'กรุณาระบุชื่อ AD Group');
     await permissionService.removePermission(
-      folderId, adGroup, req.adminUser?.username || 'admin'
+      folderId, adGroup, actor(req)
     );
     return res.json({ success: true });
   } catch (err) {
@@ -78,9 +93,13 @@ async function removePermission(req, res) {
 async function replaceAll(req, res) {
   try {
     const folderId = parseInt(req.params.folderId, 10);
-    const { permissions } = req.body;
+    const permissions = (req.body.permissions || []).map(p => ({
+      ...p,
+      adGroup: typeof p.adGroup === 'string' ? p.adGroup.trim() : '',
+    }));
+    if (permissions.some(p => !p.adGroup)) return badRequest(res, 'กรุณาระบุชื่อ AD Group');
     await permissionService.replaceAllPermissions(
-      folderId, permissions, req.adminUser?.username || 'admin'
+      folderId, permissions, actor(req)
     );
     return res.json({ success: true });
   } catch (err) {

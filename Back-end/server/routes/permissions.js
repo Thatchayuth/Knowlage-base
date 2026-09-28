@@ -25,10 +25,18 @@ const permCtrl = require('../controllers/permission.controller');
 
 const adminGuard = [authenticateAD, authorizeGroup('admin-dt')];
 
+// Response: { success:false, error:'<first message>', message:'<same>', errors:[...] }
+// `error`/`message` carry a readable text for frontends that only read one field.
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
+    const list  = errors.array();
+    const first = list[0] || {};
+    const field = first.path || first.param;
+    const msg   = first.msg && first.msg !== 'Invalid value'
+      ? first.msg
+      : `ข้อมูลไม่ถูกต้อง${field ? `: ${field}` : ''}`;
+    return res.status(400).json({ success: false, error: msg, message: msg, errors: list });
   }
   return next();
 };
@@ -37,7 +45,7 @@ const validate = (req, res, next) => {
 router.get(
   '/admin/permissions/:folderId',
   adminGuard,
-  [param('folderId').isInt({ min: 1 })],
+  [param('folderId').isInt({ min: 1 }).withMessage('folderId ไม่ถูกต้อง')],
   validate,
   permCtrl.getByFolder
 );
@@ -47,11 +55,12 @@ router.post(
   '/admin/permissions',
   adminGuard,
   [
-    body('folderId').isInt({ min: 1 }),
-    body('adGroup').notEmpty().isString(),
-    body('canView').isBoolean(),
-    body('canUpload').isBoolean(),
-    body('canDelete').isBoolean(),
+    body('folderId').isInt({ min: 1 }).withMessage('folderId ไม่ถูกต้อง'),
+    body('adGroup').isString().withMessage('ชื่อ AD Group ไม่ถูกต้อง').bail()
+      .trim().notEmpty().withMessage('กรุณาระบุชื่อ AD Group'),
+    body('canView').isBoolean().withMessage('canView ต้องเป็น true/false'),
+    body('canUpload').isBoolean().withMessage('canUpload ต้องเป็น true/false'),
+    body('canDelete').isBoolean().withMessage('canDelete ต้องเป็น true/false'),
   ],
   validate,
   permCtrl.setPermission
@@ -61,7 +70,10 @@ router.post(
 router.delete(
   '/admin/permissions/:folderId/:adGroup',
   adminGuard,
-  [param('folderId').isInt({ min: 1 }), param('adGroup').notEmpty()],
+  [
+    param('folderId').isInt({ min: 1 }).withMessage('folderId ไม่ถูกต้อง'),
+    param('adGroup').trim().notEmpty().withMessage('กรุณาระบุชื่อ AD Group'),
+  ],
   validate,
   permCtrl.removePermission
 );
@@ -71,12 +83,13 @@ router.put(
   '/admin/permissions/:folderId',
   adminGuard,
   [
-    param('folderId').isInt({ min: 1 }),
-    body('permissions').isArray({ min: 0 }),
-    body('permissions.*.adGroup').notEmpty().isString(),
-    body('permissions.*.canView').isBoolean(),
-    body('permissions.*.canUpload').isBoolean(),
-    body('permissions.*.canDelete').isBoolean(),
+    param('folderId').isInt({ min: 1 }).withMessage('folderId ไม่ถูกต้อง'),
+    body('permissions').isArray({ min: 0 }).withMessage('permissions ต้องเป็น array'),
+    body('permissions.*.adGroup').isString().withMessage('ชื่อ AD Group ไม่ถูกต้อง').bail()
+      .trim().notEmpty().withMessage('กรุณาระบุชื่อ AD Group'),
+    body('permissions.*.canView').isBoolean().withMessage('canView ต้องเป็น true/false'),
+    body('permissions.*.canUpload').isBoolean().withMessage('canUpload ต้องเป็น true/false'),
+    body('permissions.*.canDelete').isBoolean().withMessage('canDelete ต้องเป็น true/false'),
   ],
   validate,
   permCtrl.replaceAll

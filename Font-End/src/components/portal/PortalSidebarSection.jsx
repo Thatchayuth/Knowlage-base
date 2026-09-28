@@ -6,7 +6,7 @@
  *
  * - Loads root folder tree (permission-filtered for current user)
  * - Each folder expands inline → lazy-loads children + files
- * - Shows ONLY PDF and video files (other types hidden)
+ * - Shows ONLY PDF, video and Excel files (other types hidden)
  * - Clicking a file navigates to /portal/file/:fileId
  */
 
@@ -17,6 +17,7 @@ import { useFolderTree } from '../../hooks/useFolderTree'
 import { getFolderChildren, getFolderFiles } from '../../services/portal.service'
 import { fetchSettings } from '../../services/services'
 import { parsePortalIcon } from '../../pages/admin/AdminSettingsPage'
+import Collapse from '../ui/Collapse'
 
 // sessionStorage helpers — survive PublicLayout remount on every navigation
 function ssGet(key, fallback = false) {
@@ -39,46 +40,33 @@ function isExcel(file) {
     (file.MimeType || '').includes('spreadsheet') ||
     file.MimeType === 'application/vnd.ms-excel'
 }
+const stripExt = (name = '') => name.replace(/\.[^.\\/]+$/, '')
+
+// Folder icon tint per depth, so nesting reads at a glance.
+const DEPTH_TINT = ['text-sky-300', 'text-teal-300', 'text-amber-300', 'text-violet-300']
+const tintFor = (depth) => DEPTH_TINT[Math.min(depth, DEPTH_TINT.length - 1)]
 
 // ── PortalFileItem ────────────────────────────────────────────────
-function PortalFileItem({ file, depth = 0 }) {
+function PortalFileItem({ file }) {
   const navigate = useNavigate()
   const location = useLocation()
   const isActive = location.pathname === `/portal/file/${file.Id}`
-  const pdf = isPdf(file)
-  const excel = isExcel(file)
-  const dotColor = pdf ? 'bg-orange-400' : excel ? 'bg-green-400' : 'bg-purple-400'
-  const label    = pdf ? 'PDF' : excel ? 'XLS' : 'VDO'
-  const labelColor = pdf ? 'text-orange-400/70' : excel ? 'text-green-400/70' : 'text-purple-400/70'
-
-  const bgClass = isActive
-    ? 'nav-item-active'
-    : `nav-item-hover ${
-        depth === 0
-          ? ''
-          : depth === 1
-            ? 'bg-white/[0.02]'
-            : depth === 2
-              ? 'bg-white/[0.04]'
-              : 'bg-white/[0.06]'
-      }`
+  const kind = isPdf(file)
+    ? { icon: 'file-pdf', color: 'text-red-300' }
+    : isExcel(file)
+      ? { icon: 'file-excel', color: 'text-emerald-300' }
+      : { icon: 'file-video', color: 'text-purple-300' }
 
   return (
     <button
       onClick={() => navigate(`/portal/file/${file.Id}`, { state: { file } })}
-      className={`nav-item w-full text-left flex items-center gap-2 py-1.5 pr-3 pl-3 ${bgClass}`}
+      title={file.FileName}
+      className={`sb-row w-full text-left flex items-center gap-2.5 min-h-[36px] py-1.5 pl-2.5 pr-3 rounded-lg text-sm ${
+        isActive ? 'sb-row-active text-white' : 'text-slate-300'
+      }`}
     >
-      {/* Branch line for sub-files */}
-      {depth > 0 && (
-        <svg className="w-3.5 h-3.5 text-slate-500/50 flex-shrink-0 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v10a2 2 0 002 2h8" />
-        </svg>
-      )}
-      <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${dotColor}`} />
-      <span className="truncate text-sm leading-snug flex-1">{file.FileName}</span>
-      <span className={`text-[10px] font-mono flex-shrink-0 ${labelColor}`}>
-        {label}
-      </span>
+      <FontAwesomeIcon icon={['fas', kind.icon]} className={`sb-row-icon w-3.5 flex-shrink-0 ${kind.color}`} />
+      <span className="flex-1 min-w-0 leading-snug line-clamp-2 break-words">{stripExt(file.FileName)}</span>
     </button>
   )
 }
@@ -119,74 +107,40 @@ function PortalFolderItem({ folder, depth = 0 }) {
     if (next && children === null) await loadData()
   }, [expanded, children, storageKey, loadData])
 
-  // Folder icon color based on depth for premium look and feel
-  const folderColor = depth === 0
-    ? 'text-sky-400'
-    : depth === 1
-      ? 'text-teal-400/80'
-      : 'text-amber-400/70'
-
-  const bgClass = depth === 0
-    ? ''
-    : depth === 1
-      ? 'bg-white/[0.02] hover:bg-white/[0.06] rounded-xl'
-      : depth === 2
-        ? 'bg-white/[0.04] hover:bg-white/[0.08] rounded-xl'
-        : 'bg-white/[0.06] hover:bg-white/[0.10] rounded-xl'
-
   return (
-    <div className="mb-0.5">
+    <div>
       <button
         onClick={handleToggle}
-        className={`w-full flex items-center gap-2 py-1.5 text-base text-slate-300 hover:text-slate-100 transition-colors pr-3 pl-3 ${bgClass}`}
+        className={`sb-row w-full flex items-center gap-2.5 min-h-[38px] py-1.5 pl-2.5 pr-2 rounded-lg text-[15px] ${
+          expanded ? 'text-white' : 'text-slate-300'
+        }`}
       >
-        {/* Branch line for subfolders */}
-        {depth > 0 && (
-          <svg className="w-3.5 h-3.5 text-slate-500/50 flex-shrink-0 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v10a2 2 0 002 2h8" />
-          </svg>
-        )}
-
-        {/* Folder icon — toggles between open and closed state */}
-        <svg className={`w-3.5 h-3.5 ${folderColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {expanded ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 10h20M2 10V6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v2M2 10v8a2 2 0 002 2h16a2 2 0 002-2v-8" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-          )}
-        </svg>
-
-        <span className="font-medium flex-1 text-left truncate text-base">{folder.FolderName}</span>
-
-        {/* Loading spinner / chevron */}
-        {loading ? (
-          <svg className="w-3 h-3 text-slate-500 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        ) : (
-          <svg
-            className={`w-3 h-3 text-slate-500 transition-transform duration-150 flex-shrink-0 ${expanded ? 'rotate-90' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+        <FontAwesomeIcon
+          icon={['fas', expanded ? 'folder-open' : 'folder']}
+          className={`sb-row-icon w-4 flex-shrink-0 ${tintFor(depth)}`}
+        />
+        <span className={`flex-1 text-left truncate ${expanded ? 'font-semibold' : 'font-medium'}`}>{folder.FolderName}</span>
+        <span className="w-5 h-5 flex items-center justify-center flex-shrink-0 text-slate-500">
+          {loading
+            ? <FontAwesomeIcon icon={['fas', 'circle-notch']} spin className="w-3" />
+            : <FontAwesomeIcon icon={['fas', 'chevron-right']} className={`w-2.5 transition-transform duration-300 ${expanded ? 'rotate-90 text-slate-300' : ''}`} />}
+        </span>
       </button>
 
-      {expanded && (
-        <div className="pl-0">
+      <Collapse open={expanded && !loading}>
+        {/* Guide line shows which folder the children belong to */}
+        <div className="sb-stagger ml-[17px] pl-2 border-l border-white/10 py-0.5 space-y-0.5">
           {children?.map(child => (
             <PortalFolderItem key={child.Id} folder={child} depth={depth + 1} />
           ))}
           {files?.map(file => (
-            <PortalFileItem key={file.Id} file={file} depth={depth + 1} />
+            <PortalFileItem key={file.Id} file={file} />
           ))}
-          {!loading && children?.length === 0 && files?.length === 0 && (
-            <p className="px-3 py-1 text-xs text-slate-600 italic">ไม่มีไฟล์</p>
+          {children?.length === 0 && files?.length === 0 && (
+            <p className="px-2.5 py-1.5 text-xs text-slate-500 italic">ไม่มีไฟล์</p>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   )
 }
@@ -200,12 +154,16 @@ export default function PortalSidebarSection() {
   const [portalIcon,  setPortalIcon]  = useState('fa-solid fa-folder')
 
   useEffect(() => {
-    fetchSettings()
+    const load = () => fetchSettings()
       .then(data => {
         if (data?.portal_title) setPortalTitle(data.portal_title)
           setPortalIcon(data.portal_icon || 'fa-solid fa-folder')
       })
       .catch(() => {}) // ถ้า fetch ไม่ได้ก็ใช้ค่า default
+    load()
+    // AdminSettingsPage fires this after a save, so the new title/icon show without a reload.
+    window.addEventListener('settings:updated', load)
+    return () => window.removeEventListener('settings:updated', load)
   }, [])
 
   // Auto-expand when on any /portal/* route; otherwise restore from sessionStorage
@@ -225,47 +183,42 @@ export default function PortalSidebarSection() {
   if (!loading && !error && tree.length === 0) return null
 
   return (
-    <div className="mb-1">
-      {/* Section header — same style as MenuLevel1 */}
+    <div className="px-3">
+      {/* Section header */}
       <button
         onClick={handleToggle}
-        className="w-full flex items-center justify-between px-3 py-2 text-base font-display font-semibold text-slate-200 hover:text-accent-400 transition-colors group"
+        className={`group w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-colors ${
+          expanded ? 'bg-white/[0.07]' : 'hover:bg-white/[0.05]'
+        }`}
       >
-        <span className="flex items-center gap-2">
-          <FontAwesomeIcon
-            icon={parsePortalIcon(portalIcon)}
-            className="w-4 h-4 text-accent-500/80 group-hover:text-accent-400 transition-colors flex-shrink-0"
-          />
-          {portalTitle}
+        <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-sky-400/25 to-teal-400/20 ring-1 ring-white/10 text-sky-200 transition-transform group-hover:scale-105">
+          <FontAwesomeIcon icon={parsePortalIcon(portalIcon)} className="w-4" />
         </span>
-
-        {loading ? (
-          <svg className="w-3.5 h-3.5 text-slate-500 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        ) : (
-          <svg
-            className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+        <span className="flex-1 min-w-0 text-left">
+          <span className="block font-display font-semibold text-[15px] text-white truncate">{portalTitle}</span>
+          {!loading && !error && (
+            <span className="block text-[11px] text-slate-400">{tree.length} โฟลเดอร์</span>
+          )}
+        </span>
+        <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-slate-400 group-hover:text-white group-hover:bg-white/10 transition-colors">
+          {loading
+            ? <FontAwesomeIcon icon={['fas', 'circle-notch']} spin className="w-3" />
+            : <FontAwesomeIcon icon={['fas', 'chevron-down']} className={`w-3 transition-transform duration-300 ${expanded ? '' : '-rotate-90'}`} />}
+        </span>
       </button>
 
       {/* Folder tree */}
-      {expanded && !loading && (
-        <div className="ml-1 border-l border-white/30 ml-4 pl-0">
+      <Collapse open={expanded && !loading}>
+        <div className="sb-stagger mt-1 space-y-0.5">
           {error ? (
-            <p className="px-3 py-1.5 text-base text-red-400 font-mono">{error}</p>
+            <p className="px-3 py-1.5 text-sm text-red-300">{error}</p>
           ) : (
             tree.map(folder => (
               <PortalFolderItem key={folder.Id} folder={folder} />
             ))
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   )
 }

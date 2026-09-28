@@ -21,14 +21,34 @@ const path = require('path');
 const homeRepo     = require('../repositories/home.repository');
 const folderRepo   = require('../repositories/folder.repository');
 const folderService = require('./folder.service');
-const cache        = require('./cache.service');
 
 const { sql, getPool } = require('../config/database');
 
 // Same rule as the kmportal launcher: only UNC or absolute drive paths.
 const SAFE_DIR_RE = /^(\\\\|[A-Za-z]:\\)/;
 
-const HOME_TTL_MS = 60 * 1000; // 1 min cache (admin edits invalidate)
+// External links must be plain web URLs (blocks javascript:, data:, … in href).
+const SAFE_URL_RE = /^https?:\/\//i;
+
+// Extensions considered "the same kind of document" per program type.
+// Used when a mapped file was renamed and we look for its replacement.
+const PROGRAM_EXTS = {
+    excel:   ['.xls', '.xlsx', '.xlsm', '.xlsb'],
+    word:    ['.doc', '.docx', '.docm'],
+    powerbi: ['.pbix'],
+};
+
+function _isUsableFile(name) {
+    if (name.startsWith('.'))  return false; // hidden
+    if (name.startsWith('~$')) return false; // Office lock/temp file
+    return true;
+}
+
+/** Windows-style glob (`*`, `?`) → anchored case-insensitive RegExp. */
+function _globToRegExp(glob) {
+    const escaped = String(glob).replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+}
 
 function _normalizeGroups(userGroups = []) {
     return (userGroups || []).map(g => String(g).toLowerCase().trim()).filter(Boolean);
@@ -74,10 +94,6 @@ async function _getFolderSummaries(ids = []) {
         WHERE  IsActive = 1
           AND  Id IN (${safeIds.join(',')})
     `);
-    console.log(`SELECT Id, FolderName, FullPath, ParentId, Icon, Description
-        FROM   dbo.Folders
-        WHERE  IsActive = 1
-          AND  Id IN (${safeIds.join(',')})`);
     const map = new Map();
     for (const row of r.recordset) map.set(row.Id, row);
     return map;
@@ -116,9 +132,7 @@ async function getHomeForUser(userGroups = []) {
 
     // Folder summaries
     const folderIds = allItems.filter(it => it.LinkType === 'folder' && it.FolderId).map(it => it.FolderId);
-    console.log(`Folder IDs to fetch summaries for:`, folderIds);
     const folderMap = await _getFolderSummaries([...new Set(folderIds)]);
-
 
     // Knowledge titles
     const knIds = allItems.filter(it => it.LinkType === 'knowledge' && it.KnowledgeId).map(it => it.KnowledgeId);
@@ -137,6 +151,7 @@ async function getHomeForUser(userGroups = []) {
                 icon:      it.Icon,
                 linkType:  it.LinkType,
                 sortOrder: it.SortOrder,
+                isPinned:  !!it.IsPinned,
             };
 
             if (it.LinkType === 'program') {
@@ -170,11 +185,7 @@ async function getHomeForUser(userGroups = []) {
                     hasAccess: matchedMappings.length > 0,
                 });
             } else if (it.LinkType === 'folder') {
-                console.log(`Processing folder item ${it.Title} with FolderId ${it.FolderId}`);
                 const folder = it.FolderId ? folderMap.get(it.FolderId) : null;
-                
-                    console.log(`Folder summary for id 1546:`, folder);
-                
                 if (!folder) continue; // folder removed/inactive — skip
                 let allowed = isAdminAll;
                 if (!allowed) {
@@ -198,7 +209,8 @@ async function getHomeForUser(userGroups = []) {
                     knowledgeTitle: kn.Title,
                 });
             } else if (it.LinkType === 'external_link') {
-                if (!it.ExternalUrl) continue;
+                // Only http(s) — rows saved before URL validation may hold e.g. javascript:
+                if (!it.ExternalUrl || !SAFE_URL_RE.test(it.ExternalUrl)) continue;
                 out.push({
                     ...base,
                     externalUrl: it.ExternalUrl,
@@ -219,6 +231,145 @@ async function getHomeForUser(userGroups = []) {
     }
 
     return { groups: result };
+}
+
+/**
+ * Resolve one mapped path to a file that exists right now.
+ *
+ * Accepts three shapes of mapping, so renamed files keep working:
+ *   \\srv\share\report.xlsm        exact file (verified; if it disappeared,
+ *                                  the newest look-alike in its folder wins)
+ *   \\srv\share\daily\             whole folder — newest file of that program type
+ *   \\srv\share\daily\L1-2*.xlsm   glob — newest name that matches
+ *
+ * @returns {Promise<{filePath:string, matchMode:string}|null>} null = unreadable
+ */
+async function _resolveMappedPath(rawPath, programType) {
+    const p = String(rawPath || '').trim();
+    if (!p || !SAFE_DIR_RE.test(p)) return null;
+
+    const base        = path.win32.basename(p);
+    const hasWildcard = /[*?]/.test(base);
+    const endsWithSep = /[\\/]$/.test(p);
+
+    // Exact path that still exists — nothing to search for.
+    if (!hasWildcard && !endsWithSep) {
+        try {
+            const st = await fsp.stat(p);
+            if (st.isFile()) return { filePath: p, matchMode: 'exact' };
+            if (!st.isDirectory()) return null;
+            return _pickNewest(p, null, programType, null, 'folder');
+        } catch {
+            // Renamed or deleted: search its folder for the closest match.
+            const dir  = path.win32.dirname(p);
+            const stem = base.replace(/\.[^.]*$/, '');
+            const ext  = path.win32.extname(base).toLowerCase();
+            return _pickNewest(dir, null, programType, { stem, ext }, 'renamed');
+        }
+    }
+
+    const dir  = endsWithSep ? p : path.win32.dirname(p);
+    const glob = hasWildcard ? base : null;
+    return _pickNewest(dir, glob, programType, null, glob ? 'glob' : 'folder');
+}
+
+/**
+ * Newest usable file in `dir`. Filtered by glob when given, else by the
+ * extensions of `programType`. `near` ({stem, ext}) ranks look-alikes of a
+ * renamed file first: same extension beats a different one, and a name that
+ * shares the old stem beats an unrelated name.
+ */
+async function _pickNewest(dir, glob, programType, near, matchMode) {
+    let entries;
+    try {
+        entries = await fsp.readdir(dir, { withFileTypes: true });
+    } catch {
+        return null;
+    }
+
+    const globRe  = glob ? _globToRegExp(glob) : null;
+    const typeExt = PROGRAM_EXTS[String(programType || '').toLowerCase()] || null;
+
+    let candidates = entries
+        .filter(e => e.isFile() && _isUsableFile(e.name))
+        .map(e => ({ name: e.name, ext: path.win32.extname(e.name).toLowerCase() }));
+
+    if (globRe)        candidates = candidates.filter(c => globRe.test(c.name));
+    else if (near?.ext) candidates = candidates.filter(c => c.ext === near.ext);
+    else if (typeExt)   candidates = candidates.filter(c => typeExt.includes(c.ext));
+
+    if (!candidates.length) return null;
+
+    // Rank a renamed file's look-alikes: shared stem first.
+    if (near?.stem) {
+        const stemLower = near.stem.toLowerCase();
+        for (const c of candidates) {
+            const nameStem = c.name.replace(/\.[^.]*$/, '').toLowerCase();
+            c.related = nameStem.startsWith(stemLower) || stemLower.startsWith(nameStem);
+        }
+        if (candidates.some(c => c.related)) candidates = candidates.filter(c => c.related);
+    }
+
+    const stated = await Promise.all(candidates.map(async c => {
+        try {
+            const full = path.win32.join(dir, c.name);
+            const st   = await fsp.stat(full);
+            return { filePath: full, mtime: st.mtimeMs };
+        } catch {
+            return null;
+        }
+    }));
+
+    const usable = stated.filter(Boolean);
+    if (!usable.length) return null;
+    usable.sort((a, b) => b.mtime - a.mtime); // newest wins — never ask the user
+    return { filePath: usable[0].filePath, matchMode };
+}
+
+/**
+ * Resolve a `program` item to the single file the current user should open,
+ * so the client can fire `kmportal://` straight away without a picker.
+ *
+ * Falls back to the raw mapped path (matchMode 'raw') whenever the share
+ * cannot be read, so behaviour is never worse than before.
+ *
+ * @throws Error with .code = 'NOT_FOUND' | 'FORBIDDEN'
+ */
+async function resolveProgramPath(itemId, userGroups = []) {
+    const item = await homeRepo.getItemById(itemId);
+    if (!item || item.LinkType !== 'program' || !item.IsEnabled) {
+        const err = new Error('Item not found');
+        err.code = 'NOT_FOUND';
+        throw err;
+    }
+
+    const userGroupsLower = _normalizeGroups(userGroups);
+    const isAdminAll = userGroups.includes('*');
+    const mappings = await homeRepo.getMappingsByItem(itemId);
+    const matched = isAdminAll
+        ? mappings
+        : mappings.filter(m => userGroupsLower.includes(String(m.AdGroup).toLowerCase().trim()));
+
+    if (!matched.length) {
+        const err = new Error('No access to this item');
+        err.code = 'FORBIDDEN';
+        throw err;
+    }
+
+    const programType = item.ProgramType || 'file';
+    for (const m of matched) {
+        const hit = await _resolveMappedPath(m.FilePath, programType);
+        if (hit) {
+            return { ...hit, adGroup: m.AdGroup, programType };
+        }
+    }
+
+    return {
+        filePath:  matched[0].FilePath,
+        matchMode: 'raw',
+        adGroup:   matched[0].AdGroup,
+        programType,
+    };
 }
 
 /**
@@ -321,16 +472,56 @@ async function getAllForAdmin() {
     return result;
 }
 
+function _notFound(msg) {
+    const err = new Error(msg);
+    err.code = 'NOT_FOUND';
+    return err;
+}
+
+/** @returns {Promise<{id:number, groupKey:string, sortOrder:number}>} */
+async function createGroup(data) {
+    return homeRepo.createGroup(data);
+}
+
 async function updateGroup(id, data) {
-    await homeRepo.updateGroup(id, data);
+    const affected = await homeRepo.updateGroup(id, data);
+    if (!affected) throw _notFound('Group not found');
 }
 
-async function createItem(data) {
-    return homeRepo.createItem(data);
+/** @returns {Promise<number>} items deleted along with the group */
+async function deleteGroup(id) {
+    return homeRepo.deleteGroup(id);
 }
 
-async function updateItem(id, data) {
-    await homeRepo.updateItem(id, data);
+/** @param {Array<{id:number, sortOrder:number}>} order */
+async function reorderGroups(order, updatedBy) {
+    return homeRepo.reorderGroups(order, updatedBy);
+}
+
+/**
+ * Create an item and (optionally) its mappings in one transaction —
+ * a mapping failure leaves no orphan item behind.
+ * @param {Array|undefined} mappings undefined = none
+ */
+async function createItem(data, mappings) {
+    return homeRepo.withTransaction(async (tx) => {
+        const id = await homeRepo.createItem(data, tx);
+        if (Array.isArray(mappings)) await homeRepo.replaceMappings(id, mappings, tx);
+        return id;
+    });
+}
+
+/**
+ * Update an item and (optionally) replace its mappings in one transaction.
+ * @param {Array|undefined} mappings undefined = leave mappings untouched
+ * @throws Error with .code = 'NOT_FOUND'
+ */
+async function updateItem(id, data, mappings) {
+    await homeRepo.withTransaction(async (tx) => {
+        const affected = await homeRepo.updateItem(id, data, tx);
+        if (!affected) throw _notFound('Item not found');
+        if (Array.isArray(mappings)) await homeRepo.replaceMappings(id, mappings, tx);
+    });
 }
 
 async function deleteItem(id) {
@@ -343,9 +534,13 @@ async function replaceMappings(itemId, mappings) {
 
 module.exports = {
     getHomeForUser,
+    resolveProgramPath,
     getProgramGroupFiles,
     getAllForAdmin,
+    createGroup,
     updateGroup,
+    deleteGroup,
+    reorderGroups,
     createItem,
     updateItem,
     deleteItem,

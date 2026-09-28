@@ -48,108 +48,107 @@ export default function AdminLoginPage() {
     }
   }
 
+  const inputCls = 'w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-base text-brand-ink placeholder:text-slate-400 shadow-sm outline-none transition-all focus:bg-white focus:border-brand focus:ring-4 focus:ring-brand/10 disabled:opacity-60'
+  const labelCls = 'block text-sm font-semibold text-slate-600 mb-1.5'
+
   return (
     <div className="min-h-screen app-shell flex items-center justify-center p-4">
-      {/* Background grid decoration */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: 'linear-gradient(#24c8ff 1px, transparent 1px), linear-gradient(90deg, #24c8ff 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-      {/* Glow blob */}
-      <div className="fixed top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Glows behind the card, in the column colors */}
+      <div className="fixed top-1/4 left-1/2 -translate-x-[70%] w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="fixed top-1/3 left-1/2 -translate-x-[10%] w-96 h-96 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-sm relative animate-fade-in">
-        {/* Logo/Brand */}
-       
+      <div className="w-full max-w-[440px] relative modal-panel-in">
+        {/* Card — same floating style as the home columns */}
+        <div className="relative overflow-hidden rounded-[28px] bg-white border border-slate-200/70 shadow-[0_1px_3px_rgba(10,24,85,0.08),0_16px_40px_-10px_rgba(10,24,85,0.25),0_40px_80px_-28px_rgba(10,24,85,0.30)]">
+          {/* Accent line in the column colors */}
+          <div
+            aria-hidden="true"
+            className="h-1.5"
+            style={{ background: 'linear-gradient(90deg, #1e40af 0%, #16a34a 50%, #0d9488 100%)' }}
+          />
 
-        {/* Card */}
-        <div className="panel p-7">
-           <div className="text-center mb-8">
-          <img src={LogoNCR} alt="NCR" className="mx-auto h-20 w-auto" />
-        
-          {/* <h1 className="font-display font-bold text-2xl text-brand-ink">Sign In</h1> */}
-          <p className="text-steel-500 text-sm mt-1">Sign in with your domain credentials</p>
-        </div>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">
-                Username
-              </label>
-              <input
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="domain\username"
-                className="input-field"
-                disabled={submitting}
-                autoFocus
-              />
+          <div className="px-8 pt-8 pb-9 sm:px-10">
+            <div className="text-center mb-8">
+              <img src={LogoNCR} alt="NCR" className="mx-auto h-20 w-auto" />
+              <h1 className="mt-4 font-display font-bold text-2xl text-brand-ink">Cell-E Onsite Desktop</h1>
+              <p className="text-slate-500 text-sm mt-1">Sign in with your domain credentials</p>
             </div>
 
-            <div>
-              <label className="block text-xs font-mono text-steel-400 mb-1.5 uppercase tracking-wider">
-                Password
-              </label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className={labelCls}>Username</label>
                 <input
-                  type={showPass ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="input-field pr-10"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="domain\username"
+                  className={inputCls}
                   disabled={submitting}
+                  autoFocus
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-steel-500 hover:text-steel-400/90 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPass ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
               </div>
-            </div>
 
-            {/* Error */}
-            {error && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
-                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {error}
+              <div>
+                <label className={labelCls}>Password</label>
+                <div className="relative">
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`${inputCls} pr-12`}
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(p => !p)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-brand hover:bg-slate-100 transition-colors"
+                    tabIndex={-1}
+                    aria-label={showPass ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                  >
+                    {showPass ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="btn-primary w-full justify-center py-2.5"
-              disabled={submitting || !username.trim() || !password}
-            >
-              {submitting ? <Spinner size="sm" /> : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
+              {/* Error */}
+              {error && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+                  <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {error}
+                </div>
               )}
-              {submitting ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
+
+              <button
+                type="submit"
+                className="btn-primary w-full h-12 justify-center text-base rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={submitting || !username.trim() || !password}
+              >
+                {submitting ? <Spinner size="sm" /> : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                )}
+                {submitting ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
+          </div>
         </div>
 
-        <p className="text-center text-xs text-steel-600 mt-6 font-mono">
+        <p className="text-center text-xs text-slate-500 mt-6 font-mono">
           Copyright © 2026 N.C.R. Rubber Industry Company.
         </p>
       </div>
