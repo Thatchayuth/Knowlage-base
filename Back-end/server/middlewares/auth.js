@@ -1,6 +1,6 @@
 'use strict';
 
-const { authenticateUser, isInGroup } = require('../services/ldapService');
+const { authenticateUser, isInGroup, resolveEffectiveGroups } = require('../services/ldapService');
 const logger = require('../services/logger');
 const ldapConfig = require('../config/ldap');
 const crypto = require('crypto');
@@ -100,12 +100,16 @@ async function authenticateAD(req, res, next) {
             user.role = syncRecord ? 'syncuser' : 'readonly';
         }
 
+        // Keep raw AD groups; permission matching uses the priority-selected set
+        user.adGroups = user.groups;
+        user.groups   = resolveEffectiveGroups(user.groups);
+
         // Cache successful auth result
         _setCache(username, password, user);
 
         req.user = user;
 
-        console.log(`[LOGIN] User: ${user.username} | Role: ${user.role} | AD Groups: ${(user.groups || []).join(', ')}`);
+        console.log(`[LOGIN] User: ${user.username} | Role: ${user.role} | AD Groups: ${(user.adGroups || []).join(', ')} | Effective: ${(user.groups || []).join(', ')}`);
 
         logger.logEvent('LOGIN_SUCCESS', {
             username:       user.username,
@@ -113,7 +117,7 @@ async function authenticateAD(req, res, next) {
             userAgent:      ua,
             executionTimeMs,
             message:        `User ${user.username} authenticated as ${user.role}`,
-            meta:           { groups: user.groups, role: user.role },
+            meta:           { groups: user.groups, adGroups: user.adGroups, role: user.role },
         });
 
         next();

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './components/ui/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
+import VersionWatcher from './components/VersionWatcher'
 import AdminLayout from './layouts/AdminLayout'
 
 // Public (login-gated) pages
@@ -52,6 +53,7 @@ function AdminWrapper({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <VersionWatcher />
       <AuthProvider>
         <ToastProvider>
           <Routes>

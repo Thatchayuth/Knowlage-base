@@ -92,6 +92,47 @@ function isInGroup(groups, groupName) {
 }
 
 // ============================================================
+// Effective Groups (priority selection)
+// ============================================================
+// Decides which AD groups are used for permission matching.
+// One priority tier is picked, in this order:
+//   1. Cell-E-OnsiteDesktop        → only this group
+//   2. BI-*                        → every BI- group the user has
+//   3. Safety-Sup / Safety         → Safety-Sup wins when the user has both
+// Groups outside these tiers (e.g. admin-dt) are always kept.
+
+const CELLE_GROUP      = 'cell-e-onsitedesktop';
+const BI_PREFIX        = 'bi-';
+const SAFETY_SUP_GROUP = 'safety-sup';
+const SAFETY_GROUP     = 'safety';
+
+function _isTierGroup(lower) {
+    return lower === CELLE_GROUP
+        || lower.startsWith(BI_PREFIX)
+        || lower === SAFETY_SUP_GROUP
+        || lower === SAFETY_GROUP;
+}
+
+function resolveEffectiveGroups(groups) {
+    if (!groups || !groups.length) return [];
+
+    const lowerOf = g => String(g).toLowerCase().trim();
+    const others  = groups.filter(g => !_isTierGroup(lowerOf(g)));
+
+    const celle = groups.filter(g => lowerOf(g) === CELLE_GROUP);
+    if (celle.length) return [...celle, ...others];
+
+    const bi = groups.filter(g => lowerOf(g).startsWith(BI_PREFIX));
+    if (bi.length) return [...bi, ...others];
+
+    const safetySup = groups.filter(g => lowerOf(g) === SAFETY_SUP_GROUP);
+    if (safetySup.length) return [...safetySup, ...others];
+
+    const safety = groups.filter(g => lowerOf(g) === SAFETY_GROUP);
+    return [...safety, ...others];
+}
+
+// ============================================================
 // PRIVATE HELPERS
 // ============================================================
 
@@ -173,5 +214,6 @@ function _extractGroups(memberOf) {
 module.exports = {
     authenticateUser,
     getUserGroups,
-    isInGroup
+    isInGroup,
+    resolveEffectiveGroups
 };

@@ -24,6 +24,7 @@
  */
 
 const adGroupService = require('../services/adGroup.service');
+const { resolveEffectiveGroups } = require('../services/ldapService');
 const logger         = require('../services/logger');
 
 /**
@@ -70,7 +71,7 @@ async function windowsAuthMiddleware(req, res, next) {
     }
 
     // ── 4. Fetch AD groups (cached)
-    const groups = await adGroupService.getGroups(username);
+    const groups = resolveEffectiveGroups(await adGroupService.getGroups(username));
 
     req.portalUser = { username, domain, groups };
     return next();
